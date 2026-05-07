@@ -43,7 +43,13 @@ class PaperTraderConfig:
     max_risk_per_trade: float = 0.01
 
     only_trade_cheap_options: bool = True
-    min_combined_score: float = 0.0
+
+    # Minimum absolute signal strength.
+    # Works with either:
+    # - combined_score
+    # - abs(mispricing_score)
+    min_abs_mispricing_score: float = 0.05
+
     min_market_price_usd: float = 5.0
 
 
@@ -72,6 +78,27 @@ def safe_float(value: Any) -> float | None:
         return None
 
     return float(number)
+
+
+def load_csv_if_exists(file_path: str) -> pd.DataFrame:
+    """
+    Load CSV safely.
+
+    Returns empty DataFrame if file does not exist or is empty.
+    """
+
+    path = Path(file_path)
+
+    if not path.exists():
+        return pd.DataFrame()
+
+    if path.stat().st_size == 0:
+        return pd.DataFrame()
+
+    try:
+        return pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame()
 
 
 def load_cash(config: PaperTraderConfig) -> float:
@@ -134,7 +161,18 @@ def save_cash(
 
 def load_candidates(config: PaperTraderConfig) -> pd.DataFrame:
     """
-    Load candidate options from live backtest/scanner output.
+    Load candidate options from live paper-backtest/scanner output.
+
+    This function is intentionally compatible with multiple candidate formats.
+
+    Supported score columns:
+    - combined_score
+    - mispricing_score
+    - cheapness_score + volatility_edge
+
+    If missing:
+    - combined_score is created from abs(mispricing_score)
+    - mispricing_score is inferred from combined_score and classification
     """
 
     path = Path(config.candidates_file)
@@ -142,13 +180,30 @@ def load_candidates(config: PaperTraderConfig) -> pd.DataFrame:
     if not path.exists():
         raise FileNotFoundError(
             f"Candidates file not found: {config.candidates_file}. "
-            "Run: python -m backtesting.live_option_backtest_engine"
+            "Run: python -m execution.live_scheduler"
         )
+
+    if path.stat().st_size == 0:
+        raise ValueError("Candidates file is empty.")
 
     data = pd.read_csv(path)
 
     if data.empty:
         raise ValueError("Candidates file is empty.")
+
+    required_columns = {
+        "instrument_name",
+        "option_type",
+        "strike",
+        "days_to_expiry",
+        "market_price_usd",
+        "classification",
+    }
+
+    missing = required_columns.difference(set(data.columns))
+
+    if missing:
+        raise ValueError(f"Candidates file missing columns: {missing}")
 
     numeric_columns = [
         "spot_price",
@@ -158,31 +213,99 @@ def load_candidates(config: PaperTraderConfig) -> pd.DataFrame:
         "model_price_usd",
         "price_diff_pct",
         "implied_volatility",
+        "implied_volatility_model",
+        "implied_volatility_feed",
         "historical_volatility",
         "volatility_spread",
         "cheapness_score",
         "volatility_edge",
         "combined_score",
+        "mispricing_score",
     ]
 
     for column in numeric_columns:
         if column in data.columns:
             data[column] = pd.to_numeric(data[column], errors="coerce")
 
-    required_columns = {
-        "instrument_name",
-        "option_type",
-        "strike",
-        "days_to_expiry",
-        "market_price_usd",
-        "combined_score",
-        "classification",
-    }
+    data["classification"] = data["classification"].astype(str).str.lower().str.strip()
 
-    missing = required_columns.difference(set(data.columns))
+    # Case 1:
+    # If candidate file has cheapness_score and volatility_edge but no combined_score,
+    # create combined_score.
+    if "combined_score" not in data.columns:
+        if "cheapness_score" in data.columns and "volatility_edge" in data.columns:
+            data["combined_score"] = (
+                data["cheapness_score"].fillna(0.0).abs()
+                + data["volatility_edge"].fillna(0.0).abs()
+            )
 
-    if missing:
-        raise ValueError(f"Candidates file missing columns: {missing}")
+    # Case 2:
+    # If candidate file has mispricing_score but no combined_score,
+    # create combined_score from absolute score.
+    if "combined_score" not in data.columns and "mispricing_score" in data.columns:
+        data["combined_score"] = data["mispricing_score"].abs()
+
+    # Case 3:
+    # If candidate file has combined_score but no mispricing_score,
+    # infer signed mispricing_score from classification.
+    if "mispricing_score" not in data.columns and "combined_score" in data.columns:
+        data["combined_score"] = pd.to_numeric(
+            data["combined_score"],
+            errors="coerce",
+        ).fillna(0.0)
+
+        def infer_signed_mispricing_score(row: pd.Series) -> float:
+            score = safe_float(row.get("combined_score"))
+
+            if score is None:
+                return 0.0
+
+            classification = str(row.get("classification", "")).lower().strip()
+
+            if classification == "cheap":
+                return -abs(score)
+
+            if classification == "expensive":
+                return abs(score)
+
+            return 0.0
+
+        data["mispricing_score"] = data.apply(
+            infer_signed_mispricing_score,
+            axis=1,
+        )
+
+    if "combined_score" not in data.columns and "mispricing_score" not in data.columns:
+        raise ValueError(
+            "Candidates file must contain at least one usable score column: "
+            "'combined_score', 'mispricing_score', or "
+            "'cheapness_score' + 'volatility_edge'."
+        )
+
+    # Final cleanup
+    if "combined_score" not in data.columns:
+        data["combined_score"] = 0.0
+
+    if "mispricing_score" not in data.columns:
+        data["mispricing_score"] = 0.0
+
+    data["combined_score"] = pd.to_numeric(
+        data["combined_score"],
+        errors="coerce",
+    ).fillna(0.0)
+
+    data["mispricing_score"] = pd.to_numeric(
+        data["mispricing_score"],
+        errors="coerce",
+    ).fillna(0.0)
+
+    data["market_price_usd"] = pd.to_numeric(
+        data["market_price_usd"],
+        errors="coerce",
+    )
+
+    data = data.dropna(subset=["market_price_usd"])
+    data = data[data["market_price_usd"] > 0].copy()
 
     return data.reset_index(drop=True)
 
@@ -191,27 +314,37 @@ def load_open_positions(config: PaperTraderConfig) -> pd.DataFrame:
     """
     Load current paper open positions.
 
-    If file does not exist, return empty DataFrame.
+    If file does not exist or is empty, return empty DataFrame.
     """
 
-    path = Path(config.positions_file)
-
-    if not path.exists():
-        return pd.DataFrame()
-
-    data = pd.read_csv(path)
+    data = load_csv_if_exists(config.positions_file)
 
     if data.empty:
-        return data
+        return pd.DataFrame()
 
     numeric_columns = [
         "spot_price",
         "strike",
         "days_to_expiry",
+        "market_price_usd",
         "entry_price_usd",
         "quantity",
         "capital_at_risk",
+        "current_price_usd",
+        "current_value_usd",
+        "entry_value_usd",
+        "unrealized_pnl",
+        "unrealized_pnl_usd",
+        "unrealized_pnl_pct",
+        "model_price_usd",
+        "price_diff_pct",
+        "implied_volatility",
+        "implied_volatility_model",
+        "implied_volatility_feed",
+        "historical_volatility",
+        "volatility_spread",
         "combined_score",
+        "mispricing_score",
     ]
 
     for column in numeric_columns:
@@ -230,7 +363,6 @@ def save_open_positions(
     """
 
     ensure_parent_folder(config.positions_file)
-
     positions.to_csv(config.positions_file, index=False)
 
 
@@ -240,6 +372,8 @@ def append_trade_history(
 ) -> None:
     """
     Append new trades to trade history CSV.
+
+    Handles missing or empty trade history file safely.
     """
 
     if trades.empty:
@@ -249,9 +383,12 @@ def append_trade_history(
 
     history_path = Path(config.trade_history_file)
 
-    if history_path.exists():
-        history = pd.read_csv(history_path)
-        combined = pd.concat([history, trades], ignore_index=True)
+    if history_path.exists() and history_path.stat().st_size > 0:
+        try:
+            history = pd.read_csv(history_path)
+            combined = pd.concat([history, trades], ignore_index=True)
+        except pd.errors.EmptyDataError:
+            combined = trades.copy()
     else:
         combined = trades.copy()
 
@@ -265,20 +402,65 @@ def filter_trade_candidates(
 ) -> pd.DataFrame:
     """
     Filter candidates for paper trading.
+
+    Filters:
+    - cheap only, if enabled
+    - minimum score strength
+    - minimum market price
+    - avoid duplicate open instruments
     """
 
     data = candidates.copy()
 
+    if data.empty:
+        return data
+
+    data["classification"] = data["classification"].astype(str).str.lower().str.strip()
+
     if config.only_trade_cheap_options:
         data = data[data["classification"] == "cheap"].copy()
 
-    data = data[data["combined_score"] >= config.min_combined_score].copy()
-    data = data[data["market_price_usd"] >= config.min_market_price_usd].copy()
+    if data.empty:
+        return data
 
+    data["combined_score"] = pd.to_numeric(
+        data["combined_score"],
+        errors="coerce",
+    ).fillna(0.0)
+
+    data["mispricing_score"] = pd.to_numeric(
+        data["mispricing_score"],
+        errors="coerce",
+    ).fillna(0.0)
+
+    data["market_price_usd"] = pd.to_numeric(
+        data["market_price_usd"],
+        errors="coerce",
+    )
+
+    data = data.dropna(subset=["market_price_usd"])
+    data = data[data["market_price_usd"] >= float(config.min_market_price_usd)].copy()
+
+    # Signal threshold:
+    # combined_score is absolute opportunity strength.
+    data = data[
+        data["combined_score"] >= float(config.min_abs_mispricing_score)
+    ].copy()
+
+    if data.empty:
+        return data
+
+    # Avoid duplicate open positions.
     if not open_positions.empty and "instrument_name" in open_positions.columns:
         already_open = set(open_positions["instrument_name"].astype(str).tolist())
-        data = data[~data["instrument_name"].astype(str).isin(already_open)].copy()
+        data = data[
+            ~data["instrument_name"].astype(str).isin(already_open)
+        ].copy()
 
+    if data.empty:
+        return data
+
+    # Strongest opportunities first.
     data = data.sort_values(
         by="combined_score",
         ascending=False,
@@ -297,7 +479,9 @@ def calculate_position_size(
 
     For a long option, max loss is premium paid.
 
-    Returns:
+    Returns
+    -------
+    tuple[float, float]
         quantity, capital_at_risk
     """
 
@@ -311,6 +495,13 @@ def calculate_position_size(
         return 0.0, 0.0
 
     risk_amount = cash * max_risk_per_trade
+
+    if risk_amount <= 0:
+        return 0.0, 0.0
+
+    if risk_amount > cash:
+        risk_amount = cash
+
     quantity = risk_amount / option_price
 
     return float(quantity), float(risk_amount)
@@ -335,7 +526,7 @@ def open_paper_trades(
     candidates = load_candidates(config)
     open_positions = load_open_positions(config)
 
-    slots_available = config.max_positions - len(open_positions)
+    slots_available = int(config.max_positions) - len(open_positions)
 
     if slots_available <= 0:
         print("No position slots available.")
@@ -375,21 +566,26 @@ def open_paper_trades(
 
         trade = {
             "opened_at": str(pd.Timestamp.now(tz="UTC")),
-            "instrument_name": str(row["instrument_name"]),
-            "option_type": str(row["option_type"]),
-            "spot_price": float(row["spot_price"]),
-            "strike": float(row["strike"]),
-            "days_to_expiry": float(row["days_to_expiry"]),
+            "instrument_name": str(row.get("instrument_name")),
+            "option_type": str(row.get("option_type")),
+            "spot_price": safe_float(row.get("spot_price")),
+            "strike": safe_float(row.get("strike")),
+            "days_to_expiry": safe_float(row.get("days_to_expiry")),
             "entry_price_usd": float(option_price),
             "quantity": float(quantity),
             "capital_at_risk": float(capital_at_risk),
             "model_price_usd": safe_float(row.get("model_price_usd")),
             "price_diff_pct": safe_float(row.get("price_diff_pct")),
             "implied_volatility": safe_float(row.get("implied_volatility")),
+            "implied_volatility_model": safe_float(row.get("implied_volatility_model")),
+            "implied_volatility_feed": safe_float(row.get("implied_volatility_feed")),
             "historical_volatility": safe_float(row.get("historical_volatility")),
             "volatility_spread": safe_float(row.get("volatility_spread")),
+            "cheapness_score": safe_float(row.get("cheapness_score")),
+            "volatility_edge": safe_float(row.get("volatility_edge")),
             "combined_score": safe_float(row.get("combined_score")),
-            "classification": str(row["classification"]),
+            "mispricing_score": safe_float(row.get("mispricing_score")),
+            "classification": str(row.get("classification")),
             "status": "open",
         }
 
@@ -411,26 +607,29 @@ def open_paper_trades(
     save_cash(cash, config)
 
     print("========== PAPER TRADES OPENED ==========")
-    print(f"New trades opened: {len(new_trades_df)}")
-    print(f"Remaining paper cash: ${cash:,.2f}")
-    print("Saved open positions to:", config.positions_file)
-    print("Saved trade history to: ", config.trade_history_file)
+    print(f"New trades opened:       {len(new_trades_df)}")
+    print(f"Remaining paper cash:    ${cash:,.2f}")
+    print(f"Open positions saved to: {config.positions_file}")
+    print(f"Trade history saved to:  {config.trade_history_file}")
     print("=========================================")
 
+    display_columns = [
+        "instrument_name",
+        "option_type",
+        "strike",
+        "entry_price_usd",
+        "quantity",
+        "capital_at_risk",
+        "combined_score",
+        "mispricing_score",
+    ]
+
+    available_columns = [
+        column for column in display_columns if column in new_trades_df.columns
+    ]
+
     print()
-    print(
-        new_trades_df[
-            [
-                "instrument_name",
-                "option_type",
-                "strike",
-                "entry_price_usd",
-                "quantity",
-                "capital_at_risk",
-                "combined_score",
-            ]
-        ].to_string(index=False)
-    )
+    print(new_trades_df[available_columns].to_string(index=False))
 
     return new_trades_df
 
@@ -460,6 +659,14 @@ def print_paper_account_summary(
 
         print(f"Capital at risk:  ${float(total_risk):,.2f}")
 
+    if not positions.empty and "unrealized_pnl_usd" in positions.columns:
+        unrealized = pd.to_numeric(
+            positions["unrealized_pnl_usd"],
+            errors="coerce",
+        ).fillna(0.0).sum()
+
+        print(f"Unrealized PnL:   ${float(unrealized):,.2f}")
+
     print("===========================================")
 
     if not positions.empty:
@@ -471,6 +678,7 @@ def print_paper_account_summary(
             "quantity",
             "capital_at_risk",
             "combined_score",
+            "mispricing_score",
             "status",
         ]
 
@@ -489,10 +697,10 @@ if __name__ == "__main__":
         trade_history_file="outputs/paper_trade_history.csv",
         initial_cash_file="outputs/paper_cash.csv",
         initial_cash=10_000.0,
-        max_positions=5,
+        max_positions=10,
         max_risk_per_trade=0.01,
         only_trade_cheap_options=True,
-        min_combined_score=0.0,
+        min_abs_mispricing_score=0.05,
         min_market_price_usd=5.0,
     )
 

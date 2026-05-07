@@ -1,7 +1,7 @@
 """
 strategies/option_mispricing.py
 
-Basic ETH options mispricing research signal.
+Robust ETH options mispricing research signal.
 
 This module compares:
 - market option price
@@ -14,12 +14,12 @@ The goal is to classify an option as:
 - cheap
 - neutral
 
-Important:
-This is a research signal, not financial advice.
-This file does not place trades.
+This is a research signal only.
+NO trades are placed here.
 """
 
 from dataclasses import dataclass
+import math
 
 from models.black_scholes import black_scholes_price
 from models.implied_volatility import (
@@ -28,13 +28,30 @@ from models.implied_volatility import (
     volatility_spread_percent,
 )
 
+# =========================
+# Configuration
+# =========================
+
+MIN_OPTION_PRICE = 0.0001
+MIN_TIME_TO_EXPIRY = 1 / 365        # 1 day
+MAX_TIME_TO_EXPIRY = 2.0            # 2 years
+
+MIN_VOLATILITY = 0.05
+MAX_VOLATILITY = 3.00
+
+MIN_PRICE_THRESHOLD = 0.05          # 5%
+MIN_VOL_THRESHOLD = 0.05            # 5 vol points
+
+HIGH_CONFIDENCE_PRICE = 0.20
+HIGH_CONFIDENCE_VOL = 0.20
+
+
+# =========================
+# Result container
+# =========================
 
 @dataclass
 class MispricingResult:
-    """
-    Container for option mispricing analysis.
-    """
-
     option_type: str
     spot_price: float
     strike_price: float
@@ -42,89 +59,90 @@ class MispricingResult:
     risk_free_rate: float
     market_price: float
     theoretical_price: float
+
     price_difference: float
     price_difference_percent: float
+
     implied_volatility: float
     historical_volatility: float
     volatility_spread: float
     volatility_spread_percent_points: float
+
     classification: str
     signal: str
+    confidence_level: str
+    mispricing_score: float
     explanation: str
 
 
-def calculate_price_difference(
-    market_price: float,
-    theoretical_price: float,
-) -> float:
-    """
-    Calculate absolute difference between market price and theoretical price.
+# =========================
+# Utilities
+# =========================
 
-    Positive result:
-        market price is above theoretical price
+def _is_valid_number(x: float) -> bool:
+    return isinstance(x, (int, float)) and math.isfinite(x)
 
-    Negative result:
-        market price is below theoretical price
-    """
 
+def _safe_reject(reason: str) -> MispricingResult:
+    return MispricingResult(
+        option_type="unknown",
+        spot_price=0.0,
+        strike_price=0.0,
+        time_to_expiry=0.0,
+        risk_free_rate=0.0,
+        market_price=0.0,
+        theoretical_price=0.0,
+        price_difference=0.0,
+        price_difference_percent=0.0,
+        implied_volatility=0.0,
+        historical_volatility=0.0,
+        volatility_spread=0.0,
+        volatility_spread_percent_points=0.0,
+        classification="invalid",
+        signal="invalid_data",
+        confidence_level="none",
+        mispricing_score=0.0,
+        explanation=reason,
+    )
+
+
+# =========================
+# Core calculations
+# =========================
+
+def calculate_price_difference(market_price: float, theoretical_price: float) -> float:
     return float(market_price - theoretical_price)
 
 
-def calculate_price_difference_percent(
-    market_price: float,
-    theoretical_price: float,
-) -> float:
-    """
-    Calculate percentage difference between market price and theoretical price.
-
-    Formula:
-        (market_price - theoretical_price) / theoretical_price
-    """
-
+def calculate_price_difference_percent(market_price: float, theoretical_price: float) -> float:
     if theoretical_price <= 0:
-        raise ValueError("theoretical_price must be greater than 0.")
-
-    difference = calculate_price_difference(
-        market_price=market_price,
-        theoretical_price=theoretical_price,
-    )
-
-    return float(difference / theoretical_price)
+        return 0.0
+    return float((market_price - theoretical_price) / theoretical_price)
 
 
+# ✅ BACKWARD‑COMPATIBLE CLASSIFIER
 def classify_option_mispricing(
-    price_difference_percent: float,
-    vol_spread: float,
-    price_threshold: float = 0.10,
-    volatility_threshold: float = 0.10,
+    price_difference_percent: float | None = None,
+    vol_spread: float | None = None,
+    price_threshold: float = MIN_PRICE_THRESHOLD,
+    volatility_threshold: float = MIN_VOL_THRESHOLD,
+    price_diff_pct: float | None = None,
+    vol_threshold: float | None = None,
 ) -> str:
     """
     Classify option as expensive, cheap, or neutral.
 
-    Parameters
-    ----------
-    price_difference_percent : float
-        Market price premium/discount vs theoretical price.
-    vol_spread : float
-        Implied volatility minus historical volatility.
-    price_threshold : float
-        Price mispricing threshold.
-        Example: 0.10 means 10%.
-    volatility_threshold : float
-        Volatility spread threshold.
-        Example: 0.10 means 10 volatility points.
-
-    Returns
-    -------
-    str
-        "expensive", "cheap", or "neutral"
+    Supports ALL call styles used across the project.
     """
 
-    if price_threshold < 0:
-        raise ValueError("price_threshold cannot be negative.")
+    if price_difference_percent is None:
+        price_difference_percent = price_diff_pct
 
-    if volatility_threshold < 0:
-        raise ValueError("volatility_threshold cannot be negative.")
+    if vol_threshold is not None:
+        volatility_threshold = vol_threshold
+
+    if price_difference_percent is None or vol_spread is None:
+        raise ValueError("price_difference_percent and vol_spread are required")
 
     expensive_by_price = price_difference_percent > price_threshold
     expensive_by_vol = vol_spread > volatility_threshold
@@ -141,59 +159,22 @@ def classify_option_mispricing(
     return "neutral"
 
 
-def generate_research_signal(
-    classification: str,
-    option_type: str,
-) -> str:
-    """
-    Generate a simple research signal from classification.
-
-    This is not an execution signal.
-    It only describes what the model sees.
-    """
-
-    classification = classification.lower().strip()
-    option_type = option_type.lower().strip()
-
-    if classification == "expensive":
-        return f"{option_type}_looks_expensive"
-
-    if classification == "cheap":
-        return f"{option_type}_looks_cheap"
-
-    return "no_clear_edge"
+def confidence_from_magnitude(price_diff_pct: float, vol_spread: float) -> str:
+    if abs(price_diff_pct) >= HIGH_CONFIDENCE_PRICE and abs(vol_spread) >= HIGH_CONFIDENCE_VOL:
+        return "high"
+    if abs(price_diff_pct) >= MIN_PRICE_THRESHOLD and abs(vol_spread) >= MIN_VOL_THRESHOLD:
+        return "medium"
+    return "low"
 
 
-def build_explanation(
-    classification: str,
-    price_difference_percent: float,
-    vol_spread_percent_points: float,
-) -> str:
-    """
-    Build human-readable explanation for the signal.
-    """
+def compute_mispricing_score(price_diff_pct: float, vol_spread: float) -> float:
+    score = 0.5 * price_diff_pct + 0.5 * vol_spread
+    return max(-1.0, min(1.0, float(score)))
 
-    price_diff_pct = price_difference_percent * 100.0
 
-    if classification == "expensive":
-        return (
-            "The option appears expensive because the market price is "
-            f"{price_diff_pct:.2f}% above theoretical value and implied volatility "
-            f"is {vol_spread_percent_points:.2f} percentage points above historical volatility."
-        )
-
-    if classification == "cheap":
-        return (
-            "The option appears cheap because the market price is "
-            f"{abs(price_diff_pct):.2f}% below theoretical value and implied volatility "
-            f"is {abs(vol_spread_percent_points):.2f} percentage points below historical volatility."
-        )
-
-    return (
-        "No strong mispricing detected. Price difference and volatility spread "
-        "do not both pass the selected thresholds."
-    )
-
+# =========================
+# Main analysis
+# =========================
 
 def analyze_option_mispricing(
     market_price: float,
@@ -203,58 +184,33 @@ def analyze_option_mispricing(
     risk_free_rate: float,
     historical_volatility: float,
     option_type: str = "call",
-    price_threshold: float = 0.10,
-    volatility_threshold: float = 0.10,
+    price_threshold: float = MIN_PRICE_THRESHOLD,
+    volatility_threshold: float = MIN_VOL_THRESHOLD,
 ) -> MispricingResult:
-    """
-    Analyze option mispricing using Black-Scholes and implied volatility.
 
-    Parameters
-    ----------
-    market_price : float
-        Observed market option price.
-    spot_price : float
-        Current ETH spot price.
-    strike_price : float
-        Option strike price.
-    time_to_expiry : float
-        Time to expiry in years.
-    risk_free_rate : float
-        Annual risk-free rate.
-    historical_volatility : float
-        Historical volatility as decimal.
-    option_type : str
-        "call" or "put".
-    price_threshold : float
-        Price mispricing threshold.
-    volatility_threshold : float
-        Volatility spread threshold.
+    values = [
+        market_price, spot_price, strike_price,
+        time_to_expiry, historical_volatility
+    ]
 
-    Returns
-    -------
-    MispricingResult
-        Full mispricing analysis.
-    """
+    if not all(_is_valid_number(v) for v in values):
+        return _safe_reject("Invalid numeric input")
+
+    if market_price < MIN_OPTION_PRICE:
+        return _safe_reject("Market price too small")
+
+    if spot_price <= 0 or strike_price <= 0:
+        return _safe_reject("Invalid spot or strike price")
+
+    if not (MIN_TIME_TO_EXPIRY <= time_to_expiry <= MAX_TIME_TO_EXPIRY):
+        return _safe_reject("Time to expiry out of range")
+
+    if not (MIN_VOLATILITY <= historical_volatility <= MAX_VOLATILITY):
+        return _safe_reject("Historical volatility out of bounds")
 
     option_type = option_type.lower().strip()
-
-    if market_price <= 0:
-        raise ValueError("market_price must be greater than 0.")
-
-    if spot_price <= 0:
-        raise ValueError("spot_price must be greater than 0.")
-
-    if strike_price <= 0:
-        raise ValueError("strike_price must be greater than 0.")
-
-    if time_to_expiry <= 0:
-        raise ValueError("time_to_expiry must be greater than 0.")
-
-    if historical_volatility <= 0:
-        raise ValueError("historical_volatility must be greater than 0.")
-
     if option_type not in {"call", "put"}:
-        raise ValueError("option_type must be either 'call' or 'put'.")
+        return _safe_reject("Invalid option type")
 
     theoretical_price = black_scholes_price(
         S=spot_price,
@@ -265,6 +221,9 @@ def analyze_option_mispricing(
         option_type=option_type,
     )
 
+    if not _is_valid_number(theoretical_price) or theoretical_price <= 0:
+        return _safe_reject("Invalid theoretical price")
+
     iv = implied_volatility(
         market_price=market_price,
         S=spot_price,
@@ -274,42 +233,36 @@ def analyze_option_mispricing(
         option_type=option_type,
     )
 
-    price_difference = calculate_price_difference(
-        market_price=market_price,
-        theoretical_price=theoretical_price,
-    )
+    if not _is_valid_number(iv) or not (MIN_VOLATILITY <= iv <= MAX_VOLATILITY):
+        return _safe_reject("Invalid implied volatility")
 
-    price_difference_percent = calculate_price_difference_percent(
-        market_price=market_price,
-        theoretical_price=theoretical_price,
-    )
+    price_diff = calculate_price_difference(market_price, theoretical_price)
+    price_diff_pct = calculate_price_difference_percent(market_price, theoretical_price)
 
-    vol_spread = volatility_spread(
-        implied_vol=iv,
-        historical_vol=historical_volatility,
-    )
-
-    vol_spread_percent_points = volatility_spread_percent(
-        implied_vol=iv,
-        historical_vol=historical_volatility,
-    )
+    vol_sp = volatility_spread(iv, historical_volatility)
+    vol_sp_pp = volatility_spread_percent(iv, historical_volatility)
 
     classification = classify_option_mispricing(
-        price_difference_percent=price_difference_percent,
-        vol_spread=vol_spread,
+        price_difference_percent=price_diff_pct,
+        vol_spread=vol_sp,
         price_threshold=price_threshold,
         volatility_threshold=volatility_threshold,
     )
 
-    signal = generate_research_signal(
-        classification=classification,
-        option_type=option_type,
+    confidence = confidence_from_magnitude(price_diff_pct, vol_sp)
+    score = compute_mispricing_score(price_diff_pct, vol_sp)
+
+    signal = (
+        f"{option_type}_looks_{classification}"
+        if classification in {"cheap", "expensive"}
+        else "no_clear_edge"
     )
 
-    explanation = build_explanation(
-        classification=classification,
-        price_difference_percent=price_difference_percent,
-        vol_spread_percent_points=vol_spread_percent_points,
+    explanation = (
+        f"Classification={classification}, "
+        f"price_diff={price_diff_pct:.2%}, "
+        f"vol_spread={vol_sp_pp:.2f}pp, "
+        f"confidence={confidence}"
     )
 
     return MispricingResult(
@@ -320,70 +273,15 @@ def analyze_option_mispricing(
         risk_free_rate=float(risk_free_rate),
         market_price=float(market_price),
         theoretical_price=float(theoretical_price),
-        price_difference=float(price_difference),
-        price_difference_percent=float(price_difference_percent),
+        price_difference=float(price_diff),
+        price_difference_percent=float(price_diff_pct),
         implied_volatility=float(iv),
         historical_volatility=float(historical_volatility),
-        volatility_spread=float(vol_spread),
-        volatility_spread_percent_points=float(vol_spread_percent_points),
+        volatility_spread=float(vol_sp),
+        volatility_spread_percent_points=float(vol_sp_pp),
         classification=classification,
         signal=signal,
+        confidence_level=confidence,
+        mispricing_score=score,
         explanation=explanation,
     )
-
-
-def print_mispricing_result(result: MispricingResult) -> None:
-    """
-    Print mispricing result in a clean format.
-    """
-
-    print("========== OPTION MISPRICING ANALYSIS ==========")
-    print(f"Option type:                 {result.option_type.upper()}")
-    print(f"ETH spot price:              ${result.spot_price:,.2f}")
-    print(f"Strike price:                ${result.strike_price:,.2f}")
-    print(f"Market option price:         ${result.market_price:,.4f}")
-    print(f"Theoretical option price:    ${result.theoretical_price:,.4f}")
-    print("------------------------------------------------")
-    print(f"Price difference:            ${result.price_difference:,.4f}")
-    print(f"Price difference percent:    {result.price_difference_percent:.2%}")
-    print(f"Implied volatility:          {result.implied_volatility:.2%}")
-    print(f"Historical volatility:       {result.historical_volatility:.2%}")
-    print(f"Volatility spread:           {result.volatility_spread:.2%}")
-    print(
-        f"Vol spread percentage pts:   "
-        f"{result.volatility_spread_percent_points:.2f}"
-    )
-    print("------------------------------------------------")
-    print(f"Classification:              {result.classification.upper()}")
-    print(f"Research signal:             {result.signal}")
-    print(f"Explanation:                 {result.explanation}")
-    print("================================================")
-
-
-if __name__ == "__main__":
-    # Standalone test with simulated ETH option market price.
-
-    S = 3000.0
-    K = 3200.0
-    T = 30 / 365
-    r = 0.04
-    historical_vol = 0.75
-    option_type = "call"
-
-    # Simulated market price.
-    # Later this should come from a real options exchange.
-    market_price = 220.0
-
-    result = analyze_option_mispricing(
-        market_price=market_price,
-        spot_price=S,
-        strike_price=K,
-        time_to_expiry=T,
-        risk_free_rate=r,
-        historical_volatility=historical_vol,
-        option_type=option_type,
-        price_threshold=0.10,
-        volatility_threshold=0.10,
-    )
-
-    print_mispricing_result(result)

@@ -10,13 +10,15 @@ This script:
 4. Prices an ETH option using Black-Scholes
 5. Calculates Greeks
 6. Calculates implied volatility from an example market price
-7. Runs basic option mispricing research signal
-8. Runs risk management approval
-9. Generates payoff visualization
-10. Generates 3D option price surface
+7. Runs robust option mispricing research signal
+8. Runs robust risk management approval
+9. Optionally generates payoff visualization
+10. Optionally generates 3D option price surface
 
 Important:
-This project is for research and education. It is not financial advice.
+This project is for research and education only.
+It is not financial advice.
+This script does NOT place live trades.
 """
 
 from config import (
@@ -53,7 +55,6 @@ from models.implied_volatility import implied_volatility_summary
 from strategies.option_mispricing import (
     MispricingResult,
     analyze_option_mispricing,
-    print_mispricing_result,
 )
 
 from strategies.risk_rules import (
@@ -63,6 +64,56 @@ from strategies.risk_rules import (
 
 from visualization.payoff_plots import plot_option_payoff
 from visualization.surface_plots import plot_option_price_surface
+
+
+# =========================
+# Runtime switches
+# =========================
+
+RUN_PAYOFF_PLOT = True
+RUN_SURFACE_PLOT = True
+
+# Simulated market assumption for main.py demo.
+# 1.10 means market option price is 10% above theoretical price.
+SIMULATED_MARKET_PRICE_MULTIPLIER = 1.10
+
+# Research exit assumptions for long option risk example.
+STOP_LOSS_PCT = 0.50
+TAKE_PROFIT_PCT = 1.00
+
+# Crypto options usually use multiplier 1.
+CONTRACT_MULTIPLIER = 1.0
+
+
+def print_mispricing_result(result: MispricingResult) -> None:
+    """
+    Print mispricing result in a clean format.
+
+    Kept inside main.py so main.py does not depend on a printer function
+    existing inside strategies/option_mispricing.py.
+    """
+
+    print("========== OPTION MISPRICING ANALYSIS ==========")
+    print(f"Option type:                 {result.option_type.upper()}")
+    print(f"ETH spot price:              ${result.spot_price:,.2f}")
+    print(f"Strike price:                ${result.strike_price:,.2f}")
+    print(f"Time to expiry:              {result.time_to_expiry:.4f} years")
+    print(f"Market option price:         ${result.market_price:,.4f}")
+    print(f"Theoretical option price:    ${result.theoretical_price:,.4f}")
+    print("------------------------------------------------")
+    print(f"Price difference:            ${result.price_difference:,.4f}")
+    print(f"Price difference percent:    {result.price_difference_percent:.2%}")
+    print(f"Implied volatility:          {result.implied_volatility:.2%}")
+    print(f"Historical volatility:       {result.historical_volatility:.2%}")
+    print(f"Volatility spread:           {result.volatility_spread:.2%}")
+    print(f"Vol spread percentage pts:   {result.volatility_spread_percent_points:.2f}")
+    print("------------------------------------------------")
+    print(f"Classification:              {result.classification.upper()}")
+    print(f"Research signal:             {result.signal}")
+    print(f"Confidence level:            {result.confidence_level}")
+    print(f"Mispricing score:            {result.mispricing_score:.4f}")
+    print(f"Explanation:                 {result.explanation}")
+    print("================================================\n")
 
 
 def load_real_eth_assumptions() -> tuple[float, float]:
@@ -163,7 +214,7 @@ def run_pricing_example(
 
     print("\n========== ETH OPTION PRICING ==========")
     print(f"Option type:       {DEFAULT_OPTION_TYPE.upper()}")
-    print(f"Spot price (ETH):  ${spot_price:,.2f}")
+    print(f"Spot price ETH:    ${spot_price:,.2f}")
     print(f"Strike price:      ${DEFAULT_STRIKE_PRICE:,.2f}")
     print(f"Days to expiry:    {DEFAULT_DAYS_TO_EXPIRY}")
     print(f"Time to expiry:    {T:.4f} years")
@@ -189,13 +240,13 @@ def run_implied_volatility_example(
     """
     Run implied volatility example.
 
-    For now, market option price is simulated as 10% above theoretical price.
+    Market option price is simulated as a multiplier of theoretical price.
     Later this should come from real ETH options market data.
     """
 
     T = days_to_years(DEFAULT_DAYS_TO_EXPIRY)
 
-    simulated_market_price = theoretical_price * 1.10
+    simulated_market_price = theoretical_price * SIMULATED_MARKET_PRICE_MULTIPLIER
 
     summary = implied_volatility_summary(
         market_price=simulated_market_price,
@@ -230,9 +281,9 @@ def run_mispricing_strategy_example(
     theoretical_price: float,
 ) -> MispricingResult:
     """
-    Run basic option mispricing research signal.
+    Run robust option mispricing research signal.
 
-    For now, market price is simulated as 10% above theoretical price.
+    For now, market price is simulated as a multiplier of theoretical price.
     Later this should come from real ETH options market data.
 
     Returns
@@ -243,7 +294,7 @@ def run_mispricing_strategy_example(
 
     T = days_to_years(DEFAULT_DAYS_TO_EXPIRY)
 
-    simulated_market_price = theoretical_price * 1.10
+    simulated_market_price = theoretical_price * SIMULATED_MARKET_PRICE_MULTIPLIER
 
     result = analyze_option_mispricing(
         market_price=simulated_market_price,
@@ -262,15 +313,49 @@ def run_mispricing_strategy_example(
     return result
 
 
+def build_long_option_exit_plan(
+    market_price: float,
+) -> tuple[float, float, float]:
+    """
+    Build simple research exit assumptions for a long option.
+
+    entry_price:
+        current market option price
+
+    stop_loss:
+        option price after loss threshold
+
+    take_profit:
+        option price after profit threshold
+    """
+
+    entry_price = float(market_price)
+    stop_loss = entry_price * (1.0 - STOP_LOSS_PCT)
+    take_profit = entry_price * (1.0 + TAKE_PROFIT_PCT)
+
+    return entry_price, stop_loss, take_profit
+
+
 def run_risk_management_example(
     mispricing_result: MispricingResult,
 ) -> None:
     """
-    Run risk management approval based on mispricing result.
+    Run robust risk management approval based on mispricing result.
 
     The option market price is treated as the premium.
     For a long option, premium paid is the maximum loss.
     """
+
+    if mispricing_result.classification == "invalid":
+        print("========== RISK DECISION ==========")
+        print("Trade allowed:       False")
+        print(f"Reason:              Cannot run risk rules because mispricing data is invalid: {mispricing_result.explanation}")
+        print("===================================\n")
+        return
+
+    entry_price, stop_loss, take_profit = build_long_option_exit_plan(
+        market_price=mispricing_result.market_price,
+    )
 
     decision = approve_trade(
         capital=INITIAL_CAPITAL,
@@ -280,9 +365,26 @@ def run_risk_management_example(
         max_risk_per_trade=MAX_RISK_PER_TRADE,
         max_volatility=2.0,
         min_volatility=0.10,
+        starting_day_equity=INITIAL_CAPITAL,
+        current_equity=INITIAL_CAPITAL,
+        max_daily_drawdown=0.02,
+        max_position_pct=0.10,
+        entry_price=entry_price,
+        stop_loss=stop_loss,
+        take_profit=take_profit,
+        min_risk_reward=1.50,
+        contract_multiplier=CONTRACT_MULTIPLIER,
+        allow_fractional_size=True,
     )
 
     print_risk_decision(decision)
+
+    if decision.allowed:
+        print("Research note: risk rules approve this example position size.")
+    else:
+        print("Research note: risk rules reject this example trade.")
+
+    print()
 
 
 def run_payoff_visualization(
@@ -291,6 +393,10 @@ def run_payoff_visualization(
     """
     Generate payoff visualization using theoretical option price as premium.
     """
+
+    if not RUN_PAYOFF_PLOT:
+        print("Skipping payoff chart.")
+        return
 
     print("Generating payoff chart...")
 
@@ -311,6 +417,10 @@ def run_surface_visualization(
     """
     Generate 3D Black-Scholes option price surface.
     """
+
+    if not RUN_SURFACE_PLOT:
+        print("Skipping 3D option price surface.")
+        return
 
     print("Generating 3D option price surface...")
 
@@ -334,6 +444,11 @@ def main() -> None:
     """
     Main execution function.
     """
+
+    print("\n========== ETH OPTIONS ALGORITHM ==========")
+    print("Mode: research / education")
+    print("Live trading: disabled")
+    print("===========================================\n")
 
     print_config_summary()
 
@@ -367,6 +482,8 @@ def main() -> None:
     run_surface_visualization(
         volatility=estimated_volatility,
     )
+
+    print("\nMain research run completed.")
 
 
 if __name__ == "__main__":

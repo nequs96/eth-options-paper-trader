@@ -6,9 +6,11 @@ Manages open paper option positions using live Deribit prices.
 This module:
 - loads open paper positions
 - fetches live Deribit option prices
+- marks positions to market
 - calculates unrealized PnL
 - closes positions based on exit rules
-- updates paper cash & trade history
+- updates paper cash
+- appends closed trades to trade history
 
 Important:
 This is paper trading only.
@@ -17,7 +19,7 @@ No real orders are placed.
 
 from __future__ import annotations
 
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
@@ -33,59 +35,207 @@ from execution.paper_trader import (
 )
 
 
+@dataclass
+class LiveOptionQuote:
+    """
+    Live option quote converted to USD.
+    """
+
+    price_usd: float
+    underlying_price_usd: float
+    source: str
+
+
 def safe_float(value: Any) -> float | None:
+    """
+    Safely convert value to float.
+    """
+
     if value is None:
         return None
+
     try:
-        f = float(value)
+        number = float(value)
     except (TypeError, ValueError):
         return None
-    if pd.isna(f):
+
+    if pd.isna(number):
         return None
-    return float(f)
+
+    return float(number)
 
 
-def get_live_option_price_usd(
+def safe_timestamp(value: Any) -> pd.Timestamp | None:
+    """
+    Safely parse timestamp as UTC.
+    """
+
+    if value is None or pd.isna(value):
+        return None
+
+    try:
+        ts = pd.Timestamp(value)
+    except Exception:
+        return None
+
+    if ts.tzinfo is None:
+        ts = ts.tz_localize("UTC")
+    else:
+        ts = ts.tz_convert("UTC")
+
+    return ts
+
+
+def extract_ticker_result(ticker: dict[str, Any]) -> dict[str, Any]:
+    """
+    Some API wrappers return the ticker directly.
+    Others return {'result': {...}}.
+
+    This function supports both.
+    """
+
+    if not isinstance(ticker, dict):
+        return {}
+
+    result = ticker.get("result")
+
+    if isinstance(result, dict):
+        return result
+
+    return ticker
+
+
+def get_live_option_quote_usd(
     instrument_name: str,
-    underlying_price: float,
+    fallback_underlying_price: float,
     deribit_config: DeribitConfig,
-) -> float | None:
+) -> LiveOptionQuote | None:
     """
-    Fetch live option price from Deribit ticker.
-    Uses mid bid/ask → mark → last.
+    Fetch live option quote from Deribit ticker and convert to USD.
+
+    Deribit option prices are usually quoted in ETH.
+    This function converts the option price into USD using the live underlying
+    price from ticker if available.
+
+    Price source priority:
+    1. bid/ask midpoint
+    2. mark price
+    3. last price
     """
 
-    ticker = fetch_deribit_ticker(
-        instrument_name=instrument_name,
-        config=deribit_config,
+    try:
+        raw_ticker = fetch_deribit_ticker(
+            instrument_name=instrument_name,
+            config=deribit_config,
+        )
+    except Exception as error:
+        print(f"WARNING: Failed to fetch ticker for {instrument_name}: {error}")
+        return None
+
+    ticker = extract_ticker_result(raw_ticker)
+
+    if not ticker:
+        return None
+
+    # Try to get live underlying price from ticker.
+    underlying_price = (
+        safe_float(ticker.get("underlying_price"))
+        or safe_float(ticker.get("index_price"))
+        or safe_float(ticker.get("estimated_delivery_price"))
+        or safe_float(fallback_underlying_price)
     )
+
+    if underlying_price is None or underlying_price <= 0:
+        return None
 
     bid = safe_float(ticker.get("best_bid_price"))
     ask = safe_float(ticker.get("best_ask_price"))
     mark = safe_float(ticker.get("mark_price"))
     last = safe_float(ticker.get("last_price"))
 
-    # Prices are quoted in ETH → convert to USD
-    def to_usd(p: float | None) -> float | None:
-        if p is None or underlying_price <= 0:
+    def to_usd(option_price_in_eth: float | None) -> float | None:
+        if option_price_in_eth is None:
             return None
-        return p * underlying_price
+        if option_price_in_eth <= 0:
+            return None
+        return float(option_price_in_eth * underlying_price)
 
     bid_usd = to_usd(bid)
     ask_usd = to_usd(ask)
 
-    if bid_usd and ask_usd and ask_usd >= bid_usd:
-        return (bid_usd + ask_usd) / 2.0
+    if (
+        bid_usd is not None
+        and ask_usd is not None
+        and bid_usd > 0
+        and ask_usd > 0
+        and ask_usd >= bid_usd
+    ):
+        return LiveOptionQuote(
+            price_usd=float((bid_usd + ask_usd) / 2.0),
+            underlying_price_usd=float(underlying_price),
+            source="bid_ask_mid",
+        )
 
     mark_usd = to_usd(mark)
-    if mark_usd and mark_usd > 0:
-        return mark_usd
+
+    if mark_usd is not None and mark_usd > 0:
+        return LiveOptionQuote(
+            price_usd=float(mark_usd),
+            underlying_price_usd=float(underlying_price),
+            source="mark",
+        )
 
     last_usd = to_usd(last)
-    if last_usd and last_usd > 0:
-        return last_usd
+
+    if last_usd is not None and last_usd > 0:
+        return LiveOptionQuote(
+            price_usd=float(last_usd),
+            underlying_price_usd=float(underlying_price),
+            source="last",
+        )
 
     return None
+
+
+def calculate_elapsed_days(position: pd.Series, now: pd.Timestamp) -> float:
+    """
+    Calculate elapsed days since the position was last updated.
+
+    This prevents days_to_expiry from decreasing multiple times if you run
+    the manager more than once in one day.
+    """
+
+    last_updated = None
+
+    if "last_updated_at" in position.index:
+        last_updated = safe_timestamp(position.get("last_updated_at"))
+
+    if last_updated is None and "opened_at" in position.index:
+        last_updated = safe_timestamp(position.get("opened_at"))
+
+    if last_updated is None:
+        return 0.0
+
+    elapsed_seconds = (now - last_updated).total_seconds()
+
+    if elapsed_seconds <= 0:
+        return 0.0
+
+    return float(elapsed_seconds / 86_400.0)
+
+
+def update_days_to_expiry(
+    current_days_to_expiry: float,
+    elapsed_days: float,
+) -> float:
+    """
+    Reduce days_to_expiry by elapsed days.
+    """
+
+    if current_days_to_expiry <= 0:
+        return 0.0
+
+    return float(max(current_days_to_expiry - elapsed_days, 0.0))
 
 
 def should_close_position(
@@ -98,10 +248,17 @@ def should_close_position(
 ) -> tuple[bool, str]:
     """
     Decide whether a paper position should be closed.
+
+    For long options:
+    - take_profit_pct = 0.40 means close at +40%
+    - stop_loss_pct = -0.30 means close at -30%
     """
 
     if entry_price <= 0:
         return True, "invalid_entry_price"
+
+    if current_price <= 0:
+        return True, "invalid_current_price"
 
     pnl_pct = current_price / entry_price - 1.0
 
@@ -121,9 +278,16 @@ def manage_paper_positions(
     trader_config: PaperTraderConfig | None = None,
     take_profit_pct: float = 0.40,
     stop_loss_pct: float = -0.30,
+    min_days_to_expiry: float = 1.0,
 ) -> None:
     """
     Update and manage open paper positions.
+
+    This function:
+    - fetches live option prices
+    - updates unrealized PnL
+    - closes positions if exit rules trigger
+    - updates cash after closes
     """
 
     if trader_config is None:
@@ -136,68 +300,153 @@ def manage_paper_positions(
         return
 
     cash = load_cash(trader_config)
-
     deribit_config = DeribitConfig()
 
-    closed_trades = []
-    updated_positions = []
+    now = pd.Timestamp.now(tz="UTC")
+
+    closed_trades: list[dict[str, Any]] = []
+    updated_positions: list[dict[str, Any]] = []
 
     print("Updating paper positions...")
 
     for _, pos in open_positions.iterrows():
-        instrument = str(pos["instrument_name"])
-        entry_price = float(pos["entry_price_usd"])
-        quantity = float(pos["quantity"])
-        days_to_expiry = float(pos["days_to_expiry"])
-        underlying_price = float(pos["spot_price"])
+        instrument = str(pos.get("instrument_name", "")).strip()
 
-        live_price = get_live_option_price_usd(
+        entry_price = safe_float(pos.get("entry_price_usd"))
+        quantity = safe_float(pos.get("quantity"))
+        original_days_to_expiry = safe_float(pos.get("days_to_expiry"))
+        fallback_underlying_price = safe_float(pos.get("spot_price"))
+
+        if not instrument:
+            continue
+
+        if entry_price is None or entry_price <= 0:
+            continue
+
+        if quantity is None or quantity <= 0:
+            continue
+
+        if original_days_to_expiry is None:
+            original_days_to_expiry = 0.0
+
+        if fallback_underlying_price is None or fallback_underlying_price <= 0:
+            fallback_underlying_price = 0.0
+
+        elapsed_days = calculate_elapsed_days(pos, now)
+
+        updated_dte = update_days_to_expiry(
+            current_days_to_expiry=float(original_days_to_expiry),
+            elapsed_days=elapsed_days,
+        )
+
+        quote = get_live_option_quote_usd(
             instrument_name=instrument,
-            underlying_price=underlying_price,
+            fallback_underlying_price=fallback_underlying_price,
             deribit_config=deribit_config,
         )
 
-        if live_price is None:
-            updated_positions.append(pos)
+        position_dict = pos.to_dict()
+
+        if quote is None:
+            # Keep position open but record that price update failed.
+            position_dict["days_to_expiry"] = updated_dte
+            position_dict["last_updated_at"] = str(now)
+            position_dict["price_update_status"] = "failed"
+            position_dict["status"] = "open"
+
+            updated_positions.append(position_dict)
             continue
+
+        current_price = float(quote.price_usd)
+        current_value = current_price * quantity
+        entry_value = entry_price * quantity
+
+        unrealized_pnl = current_value - entry_value
+        unrealized_pnl_pct = current_price / entry_price - 1.0
 
         should_close, reason = should_close_position(
             entry_price=entry_price,
-            current_price=live_price,
-            days_to_expiry=days_to_expiry,
+            current_price=current_price,
+            days_to_expiry=updated_dte,
             take_profit_pct=take_profit_pct,
             stop_loss_pct=stop_loss_pct,
+            min_days_to_expiry=min_days_to_expiry,
         )
 
         if should_close:
-            pnl = (live_price - entry_price) * quantity
-            cash += live_price * quantity
+            # Since cash was reduced when trade was opened,
+            # closing a long option adds exit value back to cash.
+            cash += current_value
 
-            closed_trade = pos.to_dict()
+            closed_trade = position_dict.copy()
             closed_trade.update(
                 {
-                    "closed_at": str(pd.Timestamp.utcnow()),
-                    "exit_price_usd": live_price,
-                    "pnl": pnl,
+                    "closed_at": str(now),
+                    "exit_price_usd": float(current_price),
+                    "exit_value_usd": float(current_value),
+                    "entry_value_usd": float(entry_value),
+                    "pnl_usd": float(unrealized_pnl),
+                    "pnl_pct": float(unrealized_pnl_pct),
                     "close_reason": reason,
+                    "days_to_expiry_at_close": float(updated_dte),
+                    "underlying_price_at_close": float(quote.underlying_price_usd),
+                    "quote_source_at_close": quote.source,
                     "status": "closed",
                 }
             )
-            closed_trades.append(closed_trade)
-        else:
-            updated_pos = pos.to_dict()
-            updated_pos["unrealized_pnl"] = (live_price - entry_price) * quantity
-            updated_positions.append(updated_pos)
 
-    # Save updates
-    save_open_positions(pd.DataFrame(updated_positions), trader_config)
-    append_trade_history(pd.DataFrame(closed_trades), trader_config)
+            closed_trades.append(closed_trade)
+
+        else:
+            position_dict.update(
+                {
+                    "spot_price": float(quote.underlying_price_usd),
+                    "days_to_expiry": float(updated_dte),
+                    "current_price_usd": float(current_price),
+                    "current_value_usd": float(current_value),
+                    "entry_value_usd": float(entry_value),
+                    "unrealized_pnl_usd": float(unrealized_pnl),
+                    "unrealized_pnl_pct": float(unrealized_pnl_pct),
+                    "quote_source": quote.source,
+                    "last_updated_at": str(now),
+                    "price_update_status": "ok",
+                    "status": "open",
+                }
+            )
+
+            updated_positions.append(position_dict)
+
+    updated_positions_df = pd.DataFrame(updated_positions)
+    closed_trades_df = pd.DataFrame(closed_trades)
+
+    save_open_positions(updated_positions_df, trader_config)
+
+    if not closed_trades_df.empty:
+        append_trade_history(closed_trades_df, trader_config)
+
     save_cash(cash, trader_config)
 
     print("========== PAPER POSITION UPDATE ==========")
-    print(f"Closed positions: {len(closed_trades)}")
-    print(f"Remaining open positions: {len(updated_positions)}")
-    print(f"Updated cash balance: ${cash:,.2f}")
+    print(f"Closed positions:          {len(closed_trades_df)}")
+    print(f"Remaining open positions:  {len(updated_positions_df)}")
+    print(f"Updated cash balance:      ${cash:,.2f}")
+
+    if not updated_positions_df.empty and "unrealized_pnl_usd" in updated_positions_df.columns:
+        unrealized = pd.to_numeric(
+            updated_positions_df["unrealized_pnl_usd"],
+            errors="coerce",
+        ).fillna(0.0).sum()
+
+        print(f"Open unrealized PnL:       ${float(unrealized):,.2f}")
+
+    if not closed_trades_df.empty and "pnl_usd" in closed_trades_df.columns:
+        realized = pd.to_numeric(
+            closed_trades_df["pnl_usd"],
+            errors="coerce",
+        ).fillna(0.0).sum()
+
+        print(f"Realized PnL this update:  ${float(realized):,.2f}")
+
     print("===========================================")
 
 

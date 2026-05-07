@@ -1,0 +1,2 @@
+initial_cash,actual_cash,expected_cash_from_history,cash_difference,open_positions,open_current_value,unrealized_pnl,realized_pnl,equity_estimate,total_pnl_estimate,reconciliation_ok
+10000.0,10000.0,10000.0,0.0,0,0.0,0.0,0.0,10000.0,0.0,True

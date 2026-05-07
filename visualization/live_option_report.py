@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 
 
 CANDIDATES_FILE = "outputs/live_backtest_candidates.csv"
-POSITIONS_FILE = "outputs/live_paper_positions.csv"
+POSITIONS_FILE = "outputs/paper_open_positions.csv"
 OUTPUT_FOLDER = "outputs"
 
 
