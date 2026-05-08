@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
+from models.trend_regime_model import get_trend_regime
+from execution.hybrid_exit_rules import HybridExitConfig, evaluate_hybrid_exit
 
 from data.options_data import fetch_deribit_ticker, DeribitConfig
 from execution.paper_trader import (
@@ -302,6 +304,24 @@ def manage_paper_positions(
     cash = load_cash(trader_config)
     deribit_config = DeribitConfig()
 
+    try:
+        trend_regime = get_trend_regime()
+    except Exception as error:
+        print(f"WARNING: Could not load trend regime for hybrid exits: {error}")
+        trend_regime = None
+
+    hybrid_exit_config = HybridExitConfig(
+        stop_loss_pct=stop_loss_pct,
+        soft_take_profit_pct=take_profit_pct,
+        hard_take_profit_pct=0.60,
+        trailing_activation_pct=0.25,
+        trailing_drawdown_pct=0.15,
+        min_days_to_expiry=min_days_to_expiry,
+        close_profitable_trade_on_trend_loss=True,
+        close_profitable_trade_on_hostile_regime=True,
+    )
+    
+
     now = pd.Timestamp.now(tz="UTC")
 
     closed_trades: list[dict[str, Any]] = []
@@ -364,14 +384,23 @@ def manage_paper_positions(
         unrealized_pnl = current_value - entry_value
         unrealized_pnl_pct = current_price / entry_price - 1.0
 
-        should_close, reason = should_close_position(
-            entry_price=entry_price,
-            current_price=current_price,
+        previous_highest_price = safe_float(pos.get("highest_price_usd"))
+
+        if previous_highest_price is None or previous_highest_price <= 0:
+            previous_highest_price = entry_price
+
+        exit_decision = evaluate_hybrid_exit(
+            option_type=str(pos.get("option_type", "")),
+            entry_price_usd=entry_price,
+            current_price_usd=current_price,
+            highest_price_usd=previous_highest_price,
             days_to_expiry=updated_dte,
-            take_profit_pct=take_profit_pct,
-            stop_loss_pct=stop_loss_pct,
-            min_days_to_expiry=min_days_to_expiry,
+            trend_regime=trend_regime,
+            config=hybrid_exit_config,
         )
+
+        should_close = exit_decision.should_close
+        reason = exit_decision.reason
 
         if should_close:
             # Since cash was reduced when trade was opened,
@@ -392,6 +421,12 @@ def manage_paper_positions(
                     "underlying_price_at_close": float(quote.underlying_price_usd),
                     "quote_source_at_close": quote.source,
                     "status": "closed",
+                    "hybrid_exit_reason": reason,
+                    "hybrid_exit_pnl_pct": float(exit_decision.pnl_pct),
+                    "highest_price_usd": float(exit_decision.highest_price_usd),
+                    "trailing_stop_price_usd": float(exit_decision.trailing_stop_price_usd),
+                    "trend_supportive_at_exit": bool(exit_decision.trend_supportive),
+                    "regime_hostile_at_exit": bool(exit_decision.regime_hostile),
                 }
             )
 
@@ -411,6 +446,11 @@ def manage_paper_positions(
                     "last_updated_at": str(now),
                     "price_update_status": "ok",
                     "status": "open",
+                    "highest_price_usd": float(exit_decision.highest_price_usd),
+                    "trailing_stop_price_usd": float(exit_decision.trailing_stop_price_usd),
+                    "hybrid_exit_pnl_pct": float(exit_decision.pnl_pct),
+                    "trend_supportive": bool(exit_decision.trend_supportive),
+                    "regime_hostile": bool(exit_decision.regime_hostile),
                 }
             )
 

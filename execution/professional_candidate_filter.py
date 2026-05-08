@@ -92,10 +92,10 @@ class ProfessionalFilterConfig:
     max_abs_delta: float = 0.65
 
     # If True, no trades when volatility is not expanding
-    require_volatility_expansion: bool = True
+    require_volatility_expansion: bool = False
 
     # If True, no trades in hostile regime
-    block_hostile_regime: bool = True
+    block_hostile_regime: bool = False
 
 
 def ensure_parent_folder(file_path: str) -> None:

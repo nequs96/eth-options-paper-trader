@@ -444,7 +444,7 @@ if __name__ == "__main__":
 
         # Professional stricter settings
         initial_cash=10_000.0,
-        max_positions=3,
+        max_positions=10,
         max_risk_per_trade=0.01,
 
         min_days_to_expiry=10.0,

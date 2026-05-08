@@ -1,2 +1,2 @@
 closed_trades,winning_trades,losing_trades,total_realized_pnl,win_rate,average_win,average_loss,profit_factor,best_trade,worst_trade,open_positions,open_capital_at_risk,open_unrealized_pnl,open_current_value,initial_cash,current_cash,account_equity_estimate,total_pnl_estimate,total_return_pct
-0,0,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0.0,0.0,0.0,10000.0,10000.0,10000.0,0.0,0.0
+0,0,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,10,956.179249911955,40.51268042357103,996.6919303355262,10000.0,9043.820750088043,10040.51268042357,40.51268042356969,0.004051268042356969
