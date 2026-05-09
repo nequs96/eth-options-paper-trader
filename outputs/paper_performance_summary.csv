@@ -1,2 +1,2 @@
-closed_trades,winning_trades,losing_trades,total_realized_pnl,win_rate,average_win,average_loss,profit_factor,best_trade,worst_trade,open_positions,open_capital_at_risk,open_unrealized_pnl,open_current_value,initial_cash,current_cash,account_equity_estimate,total_pnl_estimate,total_return_pct
-2,2,0,82.03292490145576,1.0,41.01646245072788,0.0,inf,46.266073549579346,35.76685135187641,10,955.5174090474417,165.83025895986827,1121.3476680073102,10000.0,9126.515515854016,10247.863183861327,247.86318386132734,0.024786318386132735
+timestamp,cash,open_positions,open_current_value,unrealized_pnl,estimated_equity,total_return,closed_trades,winning_trades,losing_trades,win_rate,realized_pnl,average_win,average_loss,profit_factor
+2026-05-09T09:35:15.262727+00:00,9801.0,2,199.0,0.0,10000.0,0.0,0,0,0,0.0,0.0,0.0,0.0,0.0

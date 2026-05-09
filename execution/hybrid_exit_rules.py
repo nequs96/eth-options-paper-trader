@@ -3,15 +3,6 @@ execution/hybrid_exit_rules.py
 
 Hybrid exit rules for long option paper positions.
 
-The goal is not to close every winner at a fixed take-profit.
-Instead, the system uses:
-- hard loss protection,
-- near-expiry close,
-- hard take-profit fallback,
-- trailing profit protection,
-- trend/regime deterioration exits,
-- volatility contraction exits.
-
 Pure decision module:
 - no file I/O,
 - no exchange calls,
@@ -112,7 +103,6 @@ def strong_trend_against_position(
     config: HybridExitConfig,
 ) -> bool:
     option_type = str(option_type).lower().strip()
-
     if option_type == "call":
         return trend_strength <= -config.strong_trend_gap_threshold
     if option_type == "put":
@@ -133,7 +123,6 @@ def build_decision(
     volatility_contracting: bool,
 ) -> HybridExitDecision:
     highest_profit_pct = highest_price_usd / entry_price_usd - 1.0 if entry_price_usd > 0 else 0.0
-
     return HybridExitDecision(
         should_close=bool(should_close),
         reason=str(reason),
@@ -167,7 +156,6 @@ def evaluate_hybrid_exit(
 
     if entry <= 0:
         return build_decision(True, "invalid_entry_price", 0.0, max(updated_high, 1.0), 1.0, 0.0, False, False, 0.0, False)
-
     if current <= 0:
         return build_decision(True, "invalid_current_price", -1.0, updated_high, entry, 0.0, False, False, 0.0, False)
 
@@ -178,37 +166,28 @@ def evaluate_hybrid_exit(
     trend_ok = trend_supports_position(option_type, trend_regime)
     hostile = safe_bool(getattr(trend_regime, "hostile", False))
     trend_strength = trend_strength_from_regime(trend_regime)
-    volatility_contracting = volatility_is_contracting(trend_regime, config)
+    vol_contracting = volatility_is_contracting(trend_regime, config)
     trend_against = strong_trend_against_position(option_type, trend_strength, config)
 
     if days_to_expiry <= config.min_days_to_expiry:
-        return build_decision(True, "near_expiry", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
+        return build_decision(True, "near_expiry", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
     if pnl_pct <= config.emergency_stop_loss_pct:
-        return build_decision(True, "emergency_stop_loss", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
+        return build_decision(True, "emergency_stop_loss", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
     if pnl_pct <= config.stop_loss_pct:
-        return build_decision(True, "hard_stop_loss", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
+        return build_decision(True, "hard_stop_loss", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
     if pnl_pct >= config.hard_take_profit_pct:
-        return build_decision(True, "hard_take_profit", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
+        return build_decision(True, "hard_take_profit", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
     if highest_profit_pct >= config.big_profit_giveback_activation_pct and pnl_pct <= config.big_profit_min_keep_pct:
-        return build_decision(True, "big_profit_giveback_protection", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
+        return build_decision(True, "big_profit_giveback_protection", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
     if highest_profit_pct >= config.trailing_activation_pct and current <= trailing_stop:
-        return build_decision(True, "trailing_profit_stop", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
+        return build_decision(True, "trailing_profit_stop", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
     if config.close_profitable_trade_on_trend_loss and pnl_pct >= config.trend_loss_profit_floor_pct and not trend_ok:
-        return build_decision(True, "profit_protected_trend_lost", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
+        return build_decision(True, "profit_protected_trend_lost", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
     if pnl_pct >= config.strong_trend_against_profit_floor_pct and trend_against:
-        return build_decision(True, "profit_protected_strong_trend_against", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
+        return build_decision(True, "profit_protected_strong_trend_against", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
     if config.close_profitable_trade_on_hostile_regime and pnl_pct >= config.soft_take_profit_pct and hostile:
-        return build_decision(True, "profit_protected_hostile_regime", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
+        return build_decision(True, "profit_protected_hostile_regime", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
+    if config.close_profitable_trade_on_volatility_contraction and pnl_pct >= config.volatility_contraction_profit_floor_pct and vol_contracting:
+        return build_decision(True, "profit_protected_volatility_contracting", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
 
-    if config.close_profitable_trade_on_volatility_contraction and pnl_pct >= config.volatility_contraction_profit_floor_pct and volatility_contracting:
-        return build_decision(True, "profit_protected_volatility_contracting", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
-    return build_decision(False, "hold", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
+    return build_decision(False, "hold", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)

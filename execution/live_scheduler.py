@@ -1,17 +1,21 @@
 """
 execution/live_scheduler.py
 
-Cleaner paper-trading scheduler.
+Robust paper-trading scheduler.
 
-Target cycle:
-1. Manage existing positions first.
-2. Reconcile account before adding new risk.
-3. Build raw candidates only.
-4. Apply professional candidate filter.
-5. Open new paper trades through dynamic portfolio allocation.
-6. Reconcile again.
-7. Generate lightweight reports.
-8. Optional visual report.
+Fixes:
+- Defines all LiveSchedulerConfig fields used by the scheduler.
+- Prevents AttributeError for take_profit_pct / stop_loss_pct / min_days_to_expiry_exit.
+- Builds external config dataclasses safely using only fields that exist.
+- Keeps KeyboardInterrupt clean.
+- Uses the safer cycle order:
+  1. Manage existing positions
+  2. Reconcile before adding new risk
+  3. Build raw candidates
+  4. Apply professional filter
+  5. Dynamic allocation + open trades
+  6. Reconcile again
+  7. Reporting
 
 Paper trading only. No real orders are placed.
 """
@@ -49,39 +53,24 @@ from execution.paper_risk_metrics import calculate_risk_metrics
 
 @dataclass
 class LiveSchedulerConfig:
+    # Loop behavior.
     output_folder: str = "outputs"
-    sleep_seconds: int = 1000
+    sleep_seconds: int = 900
     max_cycles: int | None = 1
 
-    refresh_option_chain: bool = True
+    # Files.
     option_chain_file: str = "outputs/live_eth_option_chain.csv"
     raw_candidates_file: str = "outputs/live_backtest_candidates.csv"
     filtered_candidates_file: str = "outputs/live_backtest_candidates_filtered.csv"
     rejected_candidates_file: str = "outputs/live_backtest_candidates_rejected.csv"
-
     paper_cash_file: str = "outputs/paper_cash.csv"
     paper_positions_file: str = "outputs/paper_open_positions.csv"
     paper_trade_history_file: str = "outputs/paper_trade_history.csv"
 
-    initial_cash: float = 10_000.0
-    max_risk_per_trade: float = 0.01
-
-    # Dynamic allocation settings.
-    max_positions: int = 30
-    target_positions: int = 4
-    max_new_positions_per_cycle: int = 2
-    normal_min_score: float = 0.25
-    expansion_min_score: float = 0.45
-    exceptional_min_score: float = 0.60
-    min_relative_to_best_score: float = 0.75
-
-    # Exit settings.
-    take_profit_pct: float = 0.30
-    stop_loss_pct: float = -0.25
-    min_days_to_expiry_exit: float = 1.5
-
-    # Candidate generation/filter settings.
+    # Scanner settings.
+    refresh_option_chain: bool = True
     historical_vol_start_date: str = "2023-01-01"
+    initial_cash: float = 10_000.0
     risk_free_rate: float = 0.04
     min_days_to_expiry: float = 3.0
     max_days_to_expiry: float = 45.0
@@ -95,8 +84,29 @@ class LiveSchedulerConfig:
     allow_puts: bool = True
     only_trade_cheap_options: bool = True
 
-    # Optional expensive reporting.
+    # Portfolio allocation.
+    max_positions: int = 30
+    target_positions: int = 4
+    max_new_positions_per_cycle: int = 2
+    normal_min_score: float = 0.25
+    expansion_min_score: float = 0.45
+    exceptional_min_score: float = 0.60
+    min_relative_to_best_score: float = 0.75
+
+    # Confidence-based sizing.
+    max_risk_per_trade: float = 0.01  # fallback/backward compatibility
+    min_risk_per_trade: float = 0.001
+    max_confidence_risk_per_trade: float = 0.04
+    max_total_open_risk_pct: float = 0.25
+
+    # Exit settings. These fields fix your AttributeError.
+    take_profit_pct: float = 0.30
+    stop_loss_pct: float = -0.25
+    min_days_to_expiry_exit: float = 1.5
+
+    # Optional reporting.
     run_visual_report: bool = False
+    run_advanced_visual_report: bool = False
 
 
 def ensure_output_folder(folder: str) -> None:
@@ -115,11 +125,12 @@ def csv_has_rows(file_path: str) -> bool:
 
 def build_dataclass_config(cls: type, values: dict[str, Any]) -> Any:
     """
-    Build external config dataclasses safely.
-    This lets the scheduler survive small differences between config versions.
+    Build a dataclass config using only fields that exist in that dataclass.
+    This prevents crashes when older config classes do not support newer fields.
     """
     if not dataclasses.is_dataclass(cls):
         return cls()
+
     allowed = {field.name for field in dataclasses.fields(cls)}
     kwargs = {key: value for key, value in values.items() if key in allowed}
     return cls(**kwargs)
@@ -169,22 +180,28 @@ def build_filter_config(cfg: LiveSchedulerConfig) -> ProfessionalFilterConfig:
 
 
 def build_paper_config(cfg: LiveSchedulerConfig) -> PaperTraderConfig:
-    return PaperTraderConfig(
-        candidates_file=cfg.filtered_candidates_file,
-        positions_file=cfg.paper_positions_file,
-        trade_history_file=cfg.paper_trade_history_file,
-        initial_cash_file=cfg.paper_cash_file,
-        initial_cash=cfg.initial_cash,
-        max_risk_per_trade=cfg.max_risk_per_trade,
-        max_positions=cfg.max_positions,
-        target_positions=cfg.target_positions,
-        max_new_positions_per_cycle=cfg.max_new_positions_per_cycle,
-        normal_min_score=cfg.normal_min_score,
-        expansion_min_score=cfg.expansion_min_score,
-        exceptional_min_score=cfg.exceptional_min_score,
-        min_relative_to_best_score=cfg.min_relative_to_best_score,
-        only_trade_cheap_options=cfg.only_trade_cheap_options,
-        min_market_price_usd=cfg.min_market_price_usd,
+    return build_dataclass_config(
+        PaperTraderConfig,
+        {
+            "candidates_file": cfg.filtered_candidates_file,
+            "positions_file": cfg.paper_positions_file,
+            "trade_history_file": cfg.paper_trade_history_file,
+            "initial_cash_file": cfg.paper_cash_file,
+            "initial_cash": cfg.initial_cash,
+            "max_risk_per_trade": cfg.max_risk_per_trade,
+            "min_risk_per_trade": cfg.min_risk_per_trade,
+            "max_confidence_risk_per_trade": cfg.max_confidence_risk_per_trade,
+            "max_total_open_risk_pct": cfg.max_total_open_risk_pct,
+            "max_positions": cfg.max_positions,
+            "target_positions": cfg.target_positions,
+            "max_new_positions_per_cycle": cfg.max_new_positions_per_cycle,
+            "normal_min_score": cfg.normal_min_score,
+            "expansion_min_score": cfg.expansion_min_score,
+            "exceptional_min_score": cfg.exceptional_min_score,
+            "min_relative_to_best_score": cfg.min_relative_to_best_score,
+            "only_trade_cheap_options": cfg.only_trade_cheap_options,
+            "min_market_price_usd": cfg.min_market_price_usd,
+        },
     )
 
 
@@ -244,6 +261,14 @@ def run_reporting_cycle(paper_cfg: PaperTraderConfig, cfg: LiveSchedulerConfig) 
         except Exception as error:
             print(f"Visual report skipped: {error}")
 
+    if cfg.run_advanced_visual_report:
+        try:
+            from visualization.advanced_3d_dashboard import generate_advanced_visual_report
+
+            generate_advanced_visual_report(show_plot=False)
+        except Exception as error:
+            print(f"Advanced 3D report skipped: {error}")
+
 
 def run_one_cycle(cfg: LiveSchedulerConfig) -> None:
     ensure_output_folder(cfg.output_folder)
@@ -279,12 +304,13 @@ def run_live_scheduler(cfg: LiveSchedulerConfig | None = None) -> None:
         cfg = LiveSchedulerConfig()
 
     cycle = 0
+
     while True:
         cycle += 1
         try:
             run_one_cycle(cfg)
         except KeyboardInterrupt:
-            print("Scheduler stopped by user.")
+            print("\nScheduler stopped by user.")
             break
         except Exception:
             print("ERROR during scheduler cycle:")
@@ -294,17 +320,25 @@ def run_live_scheduler(cfg: LiveSchedulerConfig | None = None) -> None:
             print(f"Reached max_cycles={cfg.max_cycles}. Stopping scheduler.")
             break
 
-        print(f"Sleeping {cfg.sleep_seconds} seconds...")
-        time.sleep(cfg.sleep_seconds)
+        try:
+            print(f"Sleeping {cfg.sleep_seconds} seconds...")
+            time.sleep(cfg.sleep_seconds)
+        except KeyboardInterrupt:
+            print("\nScheduler stopped by user during sleep.")
+            break
 
 
 if __name__ == "__main__":
     config = LiveSchedulerConfig(
-        sleep_seconds=800,
-        max_cycles=200,
+        sleep_seconds=900,
+        max_cycles=None,
         max_positions=30,
         target_positions=4,
         max_new_positions_per_cycle=2,
+        take_profit_pct=0.30,
+        stop_loss_pct=-0.25,
+        min_days_to_expiry_exit=1.5,
         run_visual_report=False,
+        run_advanced_visual_report=False,
     )
     run_live_scheduler(config)
