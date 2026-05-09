@@ -1,18 +1,21 @@
 """
 execution/hybrid_exit_rules.py
 
-Hybrid exit rules for paper option positions.
+Hybrid exit rules for long option paper positions.
 
-This module decides when to close a paper option position using:
-- hard stop loss
-- near-expiry close
-- hard take profit
-- trailing profit protection
-- trend/regime-based profit protection
+The goal is not to close every winner at a fixed take-profit.
+Instead, the system uses:
+- hard loss protection,
+- near-expiry close,
+- hard take-profit fallback,
+- trailing profit protection,
+- trend/regime deterioration exits,
+- volatility contraction exits.
 
-Important:
-This is for paper trading only.
-It does not place real orders.
+Pure decision module:
+- no file I/O,
+- no exchange calls,
+- no cash/accounting logic.
 """
 
 from __future__ import annotations
@@ -23,41 +26,26 @@ from typing import Any
 
 @dataclass
 class HybridExitConfig:
-    """
-    Hybrid exit configuration.
-
-    stop_loss_pct:
-        Hard stop loss. Example: -0.20 means close at -20%.
-
-    soft_take_profit_pct:
-        Profit level where model-based protection starts.
-        Example: 0.35 means +35%.
-
-    hard_take_profit_pct:
-        Always close once profit reaches this level.
-        Example: 0.60 means +60%.
-
-    trailing_activation_pct:
-        Start trailing once position reaches this profit.
-        Example: 0.25 means activate trailing at +25%.
-
-    trailing_drawdown_pct:
-        Close if option falls this much from high watermark after trailing activates.
-        Example: 0.15 means close after 15% drop from best seen option price.
-
-    min_days_to_expiry:
-        Close when DTE falls below this.
-    """
-
-    stop_loss_pct: float = -0.20
-    soft_take_profit_pct: float = 0.35
-    hard_take_profit_pct: float = 0.60
+    stop_loss_pct: float = -0.25
+    emergency_stop_loss_pct: float = -0.45
+    soft_take_profit_pct: float = 0.30
+    hard_take_profit_pct: float = 0.80
     trailing_activation_pct: float = 0.25
-    trailing_drawdown_pct: float = 0.15
-    min_days_to_expiry: float = 1.0
+    trailing_drawdown_pct: float = 0.18
+    min_days_to_expiry: float = 1.5
+
+    trend_loss_profit_floor_pct: float = 0.12
+    strong_trend_against_profit_floor_pct: float = 0.05
+    volatility_contraction_profit_floor_pct: float = 0.18
+    big_profit_giveback_activation_pct: float = 0.50
+    big_profit_min_keep_pct: float = 0.22
+
+    strong_trend_gap_threshold: float = 0.015
+    volatility_contraction_ratio: float = 0.85
 
     close_profitable_trade_on_trend_loss: bool = True
     close_profitable_trade_on_hostile_regime: bool = True
+    close_profitable_trade_on_volatility_contraction: bool = True
 
 
 @dataclass
@@ -66,41 +54,98 @@ class HybridExitDecision:
     reason: str
     pnl_pct: float
     highest_price_usd: float
+    highest_profit_pct: float
     trailing_stop_price_usd: float
     trend_supportive: bool
     regime_hostile: bool
+    trend_strength: float
+    volatility_contracting: bool
+
+
+def safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    if number != number:
+        return default
+    return float(number)
 
 
 def safe_bool(value: Any, default: bool = False) -> bool:
     if value is None:
         return default
-
     return bool(value)
 
 
-def trend_supports_position(
-    option_type: str,
-    trend_regime: Any,
-) -> bool:
-    """
-    Check whether current market trend still supports the position direction.
+def trend_strength_from_regime(trend_regime: Any) -> float:
+    sma_fast = safe_float(getattr(trend_regime, "sma_fast", 0.0))
+    sma_slow = safe_float(getattr(trend_regime, "sma_slow", 0.0))
+    if sma_slow <= 0:
+        return 0.0
+    return float((sma_fast - sma_slow) / sma_slow)
 
-    Calls need bullish regime.
-    Puts need bearish regime.
-    """
 
+def volatility_is_contracting(trend_regime: Any, config: HybridExitConfig) -> bool:
+    hv_fast = safe_float(getattr(trend_regime, "hv_fast", 0.0))
+    hv_slow = safe_float(getattr(trend_regime, "hv_slow", 0.0))
+    if hv_fast <= 0 or hv_slow <= 0:
+        return False
+    return bool(hv_fast < hv_slow * config.volatility_contraction_ratio)
+
+
+def trend_supports_position(option_type: str, trend_regime: Any) -> bool:
     option_type = str(option_type).lower().strip()
-
     bullish = safe_bool(getattr(trend_regime, "bullish", False))
     bearish = safe_bool(getattr(trend_regime, "bearish", False))
 
     if option_type == "call":
         return bullish
-
     if option_type == "put":
         return bearish
-
     return False
+
+
+def strong_trend_against_position(
+    option_type: str,
+    trend_strength: float,
+    config: HybridExitConfig,
+) -> bool:
+    option_type = str(option_type).lower().strip()
+
+    if option_type == "call":
+        return trend_strength <= -config.strong_trend_gap_threshold
+    if option_type == "put":
+        return trend_strength >= config.strong_trend_gap_threshold
+    return False
+
+
+def build_decision(
+    should_close: bool,
+    reason: str,
+    pnl_pct: float,
+    highest_price_usd: float,
+    entry_price_usd: float,
+    trailing_stop_price_usd: float,
+    trend_supportive: bool,
+    regime_hostile: bool,
+    trend_strength: float,
+    volatility_contracting: bool,
+) -> HybridExitDecision:
+    highest_profit_pct = highest_price_usd / entry_price_usd - 1.0 if entry_price_usd > 0 else 0.0
+
+    return HybridExitDecision(
+        should_close=bool(should_close),
+        reason=str(reason),
+        pnl_pct=float(pnl_pct),
+        highest_price_usd=float(highest_price_usd),
+        highest_profit_pct=float(highest_profit_pct),
+        trailing_stop_price_usd=float(trailing_stop_price_usd),
+        trend_supportive=bool(trend_supportive),
+        regime_hostile=bool(regime_hostile),
+        trend_strength=float(trend_strength),
+        volatility_contracting=bool(volatility_contracting),
+    )
 
 
 def evaluate_hybrid_exit(
@@ -112,148 +157,58 @@ def evaluate_hybrid_exit(
     trend_regime: Any,
     config: HybridExitConfig | None = None,
 ) -> HybridExitDecision:
-    """
-    Decide whether to close a paper option position.
-
-    Exit priority:
-    1. Invalid data
-    2. Near expiry
-    3. Hard stop loss
-    4. Hard take profit
-    5. Trailing profit protection
-    6. Profit protection when trend disappears
-    7. Profit protection when regime becomes hostile
-    """
-
     if config is None:
         config = HybridExitConfig()
 
-    if entry_price_usd <= 0:
-        return HybridExitDecision(
-            should_close=True,
-            reason="invalid_entry_price",
-            pnl_pct=0.0,
-            highest_price_usd=max(highest_price_usd, current_price_usd),
-            trailing_stop_price_usd=0.0,
-            trend_supportive=False,
-            regime_hostile=False,
-        )
+    entry = float(entry_price_usd)
+    current = float(current_price_usd)
+    previous_high = max(float(highest_price_usd), entry)
+    updated_high = max(previous_high, current)
 
-    if current_price_usd <= 0:
-        return HybridExitDecision(
-            should_close=True,
-            reason="invalid_current_price",
-            pnl_pct=-1.0,
-            highest_price_usd=max(highest_price_usd, current_price_usd),
-            trailing_stop_price_usd=0.0,
-            trend_supportive=False,
-            regime_hostile=False,
-        )
+    if entry <= 0:
+        return build_decision(True, "invalid_entry_price", 0.0, max(updated_high, 1.0), 1.0, 0.0, False, False, 0.0, False)
 
-    updated_highest_price = max(
-        float(highest_price_usd),
-        float(current_price_usd),
-        float(entry_price_usd),
-    )
+    if current <= 0:
+        return build_decision(True, "invalid_current_price", -1.0, updated_high, entry, 0.0, False, False, 0.0, False)
 
-    pnl_pct = current_price_usd / entry_price_usd - 1.0
+    pnl_pct = current / entry - 1.0
+    highest_profit_pct = updated_high / entry - 1.0
+    trailing_stop = updated_high * (1.0 - config.trailing_drawdown_pct)
 
-    trend_ok = trend_supports_position(
-        option_type=option_type,
-        trend_regime=trend_regime,
-    )
+    trend_ok = trend_supports_position(option_type, trend_regime)
+    hostile = safe_bool(getattr(trend_regime, "hostile", False))
+    trend_strength = trend_strength_from_regime(trend_regime)
+    volatility_contracting = volatility_is_contracting(trend_regime, config)
+    trend_against = strong_trend_against_position(option_type, trend_strength, config)
 
-    regime_hostile = safe_bool(getattr(trend_regime, "hostile", False))
-
-    trailing_stop_price = updated_highest_price * (1.0 - config.trailing_drawdown_pct)
-
-    # 1. Near expiry
     if days_to_expiry <= config.min_days_to_expiry:
-        return HybridExitDecision(
-            should_close=True,
-            reason="near_expiry",
-            pnl_pct=float(pnl_pct),
-            highest_price_usd=float(updated_highest_price),
-            trailing_stop_price_usd=float(trailing_stop_price),
-            trend_supportive=trend_ok,
-            regime_hostile=regime_hostile,
-        )
+        return build_decision(True, "near_expiry", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
 
-    # 2. Hard stop loss
+    if pnl_pct <= config.emergency_stop_loss_pct:
+        return build_decision(True, "emergency_stop_loss", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
+
     if pnl_pct <= config.stop_loss_pct:
-        return HybridExitDecision(
-            should_close=True,
-            reason="hard_stop_loss",
-            pnl_pct=float(pnl_pct),
-            highest_price_usd=float(updated_highest_price),
-            trailing_stop_price_usd=float(trailing_stop_price),
-            trend_supportive=trend_ok,
-            regime_hostile=regime_hostile,
-        )
+        return build_decision(True, "hard_stop_loss", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
 
-    # 3. Hard take profit
     if pnl_pct >= config.hard_take_profit_pct:
-        return HybridExitDecision(
-            should_close=True,
-            reason="hard_take_profit",
-            pnl_pct=float(pnl_pct),
-            highest_price_usd=float(updated_highest_price),
-            trailing_stop_price_usd=float(trailing_stop_price),
-            trend_supportive=trend_ok,
-            regime_hostile=regime_hostile,
-        )
+        return build_decision(True, "hard_take_profit", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
 
-    # 4. Trailing profit protection
-    if pnl_pct >= config.trailing_activation_pct:
-        if current_price_usd <= trailing_stop_price:
-            return HybridExitDecision(
-                should_close=True,
-                reason="trailing_profit_stop",
-                pnl_pct=float(pnl_pct),
-                highest_price_usd=float(updated_highest_price),
-                trailing_stop_price_usd=float(trailing_stop_price),
-                trend_supportive=trend_ok,
-                regime_hostile=regime_hostile,
-            )
+    if highest_profit_pct >= config.big_profit_giveback_activation_pct and pnl_pct <= config.big_profit_min_keep_pct:
+        return build_decision(True, "big_profit_giveback_protection", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
 
-    # 5. Trend-loss profit protection
-    if (
-        config.close_profitable_trade_on_trend_loss
-        and pnl_pct >= config.soft_take_profit_pct
-        and not trend_ok
-    ):
-        return HybridExitDecision(
-            should_close=True,
-            reason="profit_protected_trend_lost",
-            pnl_pct=float(pnl_pct),
-            highest_price_usd=float(updated_highest_price),
-            trailing_stop_price_usd=float(trailing_stop_price),
-            trend_supportive=trend_ok,
-            regime_hostile=regime_hostile,
-        )
+    if highest_profit_pct >= config.trailing_activation_pct and current <= trailing_stop:
+        return build_decision(True, "trailing_profit_stop", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
 
-    # 6. Hostile-regime profit protection
-    if (
-        config.close_profitable_trade_on_hostile_regime
-        and pnl_pct >= config.soft_take_profit_pct
-        and regime_hostile
-    ):
-        return HybridExitDecision(
-            should_close=True,
-            reason="profit_protected_hostile_regime",
-            pnl_pct=float(pnl_pct),
-            highest_price_usd=float(updated_highest_price),
-            trailing_stop_price_usd=float(trailing_stop_price),
-            trend_supportive=trend_ok,
-            regime_hostile=regime_hostile,
-        )
+    if config.close_profitable_trade_on_trend_loss and pnl_pct >= config.trend_loss_profit_floor_pct and not trend_ok:
+        return build_decision(True, "profit_protected_trend_lost", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
 
-    return HybridExitDecision(
-        should_close=False,
-        reason="hold",
-        pnl_pct=float(pnl_pct),
-        highest_price_usd=float(updated_highest_price),
-        trailing_stop_price_usd=float(trailing_stop_price),
-        trend_supportive=trend_ok,
-        regime_hostile=regime_hostile,
-    )
+    if pnl_pct >= config.strong_trend_against_profit_floor_pct and trend_against:
+        return build_decision(True, "profit_protected_strong_trend_against", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
+
+    if config.close_profitable_trade_on_hostile_regime and pnl_pct >= config.soft_take_profit_pct and hostile:
+        return build_decision(True, "profit_protected_hostile_regime", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
+
+    if config.close_profitable_trade_on_volatility_contraction and pnl_pct >= config.volatility_contraction_profit_floor_pct and volatility_contracting:
+        return build_decision(True, "profit_protected_volatility_contracting", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
+
+    return build_decision(False, "hold", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)

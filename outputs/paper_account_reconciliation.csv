@@ -1,2 +1,2 @@
-initial_cash,actual_cash,expected_cash_from_history,cash_difference,open_positions,open_current_value,unrealized_pnl,realized_pnl,equity_estimate,total_pnl_estimate,reconciliation_ok
-10000.0,9043.820750088043,9043.820750088045,-1.8189894035458565e-12,10,996.6919303355262,40.51268042357103,0.0,10040.51268042357,40.51268042356969,True
+timestamp,actual_cash,expected_cash,cash_difference,open_current_value,realized_pnl,unrealized_pnl,equity_estimate,open_positions,reconciliation_ok
+2026-05-09T09:26:15.838208+00:00,9477.34512329157,9441.790727390397,35.55439590117385,0.0,138.79293133900978,0.0,9477.34512329157,7,False

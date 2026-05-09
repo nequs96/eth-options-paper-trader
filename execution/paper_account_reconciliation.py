@@ -1,220 +1,152 @@
 """
 execution/paper_account_reconciliation.py
 
-Reconciles paper account state.
+Paper account reconciliation.
 
-Checks:
-- cash file
-- open positions
-- trade history
-- expected cash from opens/closes
-- equity estimate
-
-Goal:
-Prevent fake or unexplained paper profits.
+Checks whether cash, open positions, and trade history are internally consistent.
+This should be used as a safety gate before opening new paper trades.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Any
+
 import pandas as pd
 
+from execution.paper_trader import PaperTraderConfig
 
-TRADE_HISTORY_FILE = "outputs/paper_trade_history.csv"
-OPEN_POSITIONS_FILE = "outputs/paper_open_positions.csv"
-CASH_FILE = "outputs/paper_cash.csv"
 RECONCILIATION_FILE = "outputs/paper_account_reconciliation.csv"
-
-INITIAL_CASH = 10_000.0
 TOLERANCE = 0.01
 
 
 def load_csv_if_exists(path: str) -> pd.DataFrame:
     file_path = Path(path)
-
     if not file_path.exists() or file_path.stat().st_size == 0:
         return pd.DataFrame()
-
     try:
         return pd.read_csv(file_path)
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
 
-def numeric_column(
-    df: pd.DataFrame,
-    possible_columns: list[str],
-    default: float = 0.0,
-) -> pd.Series:
-    for col in possible_columns:
-        if col in df.columns:
-            return pd.to_numeric(df[col], errors="coerce").fillna(default)
-
-    return pd.Series([default] * len(df), index=df.index)
+def numeric_column(df: pd.DataFrame, possible_columns: list[str], default: float = 0.0) -> pd.Series:
+    if df.empty:
+        return pd.Series(dtype=float)
+    for column in possible_columns:
+        if column in df.columns:
+            return pd.to_numeric(df[column], errors="coerce").fillna(default)
+    return pd.Series([default] * len(df), index=df.index, dtype=float)
 
 
-def load_cash() -> float:
-    cash_df = load_csv_if_exists(CASH_FILE)
-
-    if cash_df.empty or "cash" not in cash_df.columns:
-        return INITIAL_CASH
-
-    cash = pd.to_numeric(cash_df["cash"], errors="coerce").dropna()
-
-    if cash.empty:
-        return INITIAL_CASH
-
-    return float(cash.iloc[0])
+def load_cash(config: PaperTraderConfig) -> float:
+    cash_df = load_csv_if_exists(config.initial_cash_file)
+    if cash_df.empty:
+        return float(config.initial_cash)
+    for column in ["cash", "paper_cash", "current_cash"]:
+        if column in cash_df.columns:
+            value = pd.to_numeric(cash_df[column], errors="coerce").dropna()
+            if not value.empty:
+                return float(value.iloc[-1])
+    return float(config.initial_cash)
 
 
 def calculate_open_current_value(open_positions: pd.DataFrame) -> float:
     if open_positions.empty:
         return 0.0
-
-    if "current_value_usd" in open_positions.columns:
-        return float(
-            pd.to_numeric(
-                open_positions["current_value_usd"],
-                errors="coerce",
-            ).fillna(0.0).sum()
-        )
-
-    capital_at_risk = numeric_column(open_positions, ["capital_at_risk"])
-    unrealized_pnl = numeric_column(
-        open_positions,
-        ["unrealized_pnl_usd", "unrealized_pnl"],
-    )
-
-    return float((capital_at_risk + unrealized_pnl).sum())
+    if "status" in open_positions.columns:
+        open_positions = open_positions[open_positions["status"].astype(str).str.lower().eq("open")]
+    values = numeric_column(open_positions, ["current_value_usd", "market_value_usd"], 0.0)
+    if values.empty or float(values.sum()) == 0.0:
+        prices = numeric_column(open_positions, ["current_price_usd", "entry_price_usd"], 0.0)
+        quantities = numeric_column(open_positions, ["quantity"], 0.0)
+        return float((prices * quantities).sum())
+    return float(values.sum())
 
 
 def calculate_unrealized_pnl(open_positions: pd.DataFrame) -> float:
     if open_positions.empty:
         return 0.0
-
-    return float(
-        numeric_column(
-            open_positions,
-            ["unrealized_pnl_usd", "unrealized_pnl"],
-        ).sum()
-    )
+    if "status" in open_positions.columns:
+        open_positions = open_positions[open_positions["status"].astype(str).str.lower().eq("open")]
+    pnl = numeric_column(open_positions, ["unrealized_pnl_usd", "unrealized_pnl"], 0.0)
+    return float(pnl.sum()) if not pnl.empty else 0.0
 
 
 def calculate_realized_pnl(trade_history: pd.DataFrame) -> float:
     if trade_history.empty:
         return 0.0
-
-    data = trade_history.copy()
-
-    if "status" in data.columns:
-        data = data[data["status"].astype(str).str.lower() == "closed"].copy()
-
-    if data.empty:
-        return 0.0
-
-    return float(numeric_column(data, ["pnl_usd", "pnl"]).sum())
+    closed = trade_history
+    if "status" in closed.columns:
+        closed = closed[closed["status"].astype(str).str.lower().eq("closed")]
+    pnl = numeric_column(closed, ["pnl_usd", "pnl"], 0.0)
+    return float(pnl.sum()) if not pnl.empty else 0.0
 
 
-def calculate_expected_cash_from_history(trade_history: pd.DataFrame) -> float:
-    """
-    Reconstruct expected cash from trade history.
+def calculate_expected_cash_from_history(config: PaperTraderConfig, trade_history: pd.DataFrame, open_positions: pd.DataFrame) -> float:
+    expected_cash = float(config.initial_cash)
 
-    Assumption:
-    - open rows reduce cash by capital_at_risk
-    - closed rows increase cash by exit_value_usd
-    """
+    if not trade_history.empty:
+        statuses = trade_history.get("status", pd.Series([""] * len(trade_history))).astype(str).str.lower()
+        opens = trade_history[statuses.eq("open")]
+        closes = trade_history[statuses.eq("closed")]
 
-    if trade_history.empty:
-        return INITIAL_CASH
+        open_costs = numeric_column(opens, ["capital_at_risk", "entry_cost_usd", "cost_usd"], 0.0)
+        close_values = numeric_column(closes, ["current_value_usd", "exit_value_usd", "proceeds_usd"], 0.0)
 
-    data = trade_history.copy()
+        expected_cash -= float(open_costs.sum()) if not open_costs.empty else 0.0
+        expected_cash += float(close_values.sum()) if not close_values.empty else 0.0
 
-    if "status" not in data.columns:
-        return INITIAL_CASH
-
-    data["status_normalized"] = data["status"].astype(str).str.lower().str.strip()
-
-    open_rows = data[data["status_normalized"] == "open"].copy()
-    closed_rows = data[data["status_normalized"] == "closed"].copy()
-
-    total_entry_cash_used = 0.0
-    total_exit_cash_returned = 0.0
-
-    if not open_rows.empty:
-        total_entry_cash_used = float(
-            numeric_column(open_rows, ["capital_at_risk", "entry_value_usd"]).sum()
-        )
-
-    if not closed_rows.empty:
-        if "exit_value_usd" in closed_rows.columns:
-            total_exit_cash_returned = float(
-                numeric_column(closed_rows, ["exit_value_usd"]).sum()
-            )
-        else:
-            exit_price = numeric_column(closed_rows, ["exit_price_usd"])
-            quantity = numeric_column(closed_rows, ["quantity"])
-            total_exit_cash_returned = float((exit_price * quantity).sum())
-
-    expected_cash = INITIAL_CASH - total_entry_cash_used + total_exit_cash_returned
+    # If open trades are not logged as open rows in history, subtract current open capital.
+    if not open_positions.empty:
+        costs = numeric_column(open_positions, ["capital_at_risk", "entry_cost_usd"], 0.0)
+        # Avoid double subtracting if history already contains open rows.
+        if trade_history.empty or "status" not in trade_history.columns or not trade_history["status"].astype(str).str.lower().eq("open").any():
+            expected_cash -= float(costs.sum()) if not costs.empty else 0.0
 
     return float(expected_cash)
 
 
-def generate_reconciliation_report() -> pd.DataFrame:
-    trade_history = load_csv_if_exists(TRADE_HISTORY_FILE)
-    open_positions = load_csv_if_exists(OPEN_POSITIONS_FILE)
-    actual_cash = load_cash()
+def generate_reconciliation_report(
+    config: PaperTraderConfig | None = None,
+    output_file: str = RECONCILIATION_FILE,
+) -> pd.DataFrame:
+    if config is None:
+        config = PaperTraderConfig()
 
-    expected_cash = calculate_expected_cash_from_history(trade_history)
+    trade_history = load_csv_if_exists(config.trade_history_file)
+    open_positions = load_csv_if_exists(config.positions_file)
+    actual_cash = load_cash(config)
+
+    expected_cash = calculate_expected_cash_from_history(config, trade_history, open_positions)
     cash_difference = actual_cash - expected_cash
-
     open_current_value = calculate_open_current_value(open_positions)
-    unrealized_pnl = calculate_unrealized_pnl(open_positions)
     realized_pnl = calculate_realized_pnl(trade_history)
-
+    unrealized_pnl = calculate_unrealized_pnl(open_positions)
     equity_estimate = actual_cash + open_current_value
-    total_pnl_estimate = equity_estimate - INITIAL_CASH
-
     reconciliation_ok = abs(cash_difference) <= TOLERANCE
 
-    summary = {
-        "initial_cash": INITIAL_CASH,
-        "actual_cash": actual_cash,
-        "expected_cash_from_history": expected_cash,
-        "cash_difference": cash_difference,
-        "open_positions": int(len(open_positions)),
-        "open_current_value": open_current_value,
-        "unrealized_pnl": unrealized_pnl,
-        "realized_pnl": realized_pnl,
-        "equity_estimate": equity_estimate,
-        "total_pnl_estimate": total_pnl_estimate,
-        "reconciliation_ok": reconciliation_ok,
-    }
+    report = pd.DataFrame(
+        [
+            {
+                "timestamp": pd.Timestamp.utcnow().isoformat(),
+                "actual_cash": float(actual_cash),
+                "expected_cash": float(expected_cash),
+                "cash_difference": float(cash_difference),
+                "open_current_value": float(open_current_value),
+                "realized_pnl": float(realized_pnl),
+                "unrealized_pnl": float(unrealized_pnl),
+                "equity_estimate": float(equity_estimate),
+                "open_positions": int(len(open_positions)) if not open_positions.empty else 0,
+                "reconciliation_ok": bool(reconciliation_ok),
+            }
+        ]
+    )
 
-    df = pd.DataFrame([summary])
-
-    Path(RECONCILIATION_FILE).parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(RECONCILIATION_FILE, index=False)
-
-    print("========== PAPER ACCOUNT RECONCILIATION ==========")
-    print(f"Initial cash:             ${INITIAL_CASH:,.2f}")
-    print(f"Actual cash:              ${actual_cash:,.2f}")
-    print(f"Expected cash:            ${expected_cash:,.2f}")
-    print(f"Cash difference:          ${cash_difference:,.2f}")
-    print("--------------------------------------------------")
-    print(f"Open positions:           {len(open_positions)}")
-    print(f"Open current value:       ${open_current_value:,.2f}")
-    print(f"Unrealized PnL:           ${unrealized_pnl:,.2f}")
-    print(f"Realized PnL:             ${realized_pnl:,.2f}")
-    print("--------------------------------------------------")
-    print(f"Equity estimate:          ${equity_estimate:,.2f}")
-    print(f"Total PnL estimate:       ${total_pnl_estimate:,.2f}")
-    print(f"Reconciliation OK:        {reconciliation_ok}")
-    print(f"Saved to:                 {RECONCILIATION_FILE}")
-    print("==================================================")
-
-    if not reconciliation_ok:
-        print("WARNING: Paper account cash does not match trade history.")
-
-    return df
+    Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+    report.to_csv(output_file, index=False)
+    print(f"Reconciliation OK: {reconciliation_ok}")
+    return report
 
 
 if __name__ == "__main__":

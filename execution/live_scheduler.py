@@ -1,30 +1,29 @@
 """
 execution/live_scheduler.py
 
-Professional live paper trading scheduler for ETH options.
+Cleaner paper-trading scheduler.
 
-Workflow:
-1. Refresh live Deribit ETH option chain
-2. Generate raw model-mispricing candidates
-3. Apply professional candidate filter
-4. Manage existing paper positions
-5. Reconcile account before opening new trades
-6. Open new paper trades from filtered candidates
-7. Generate reports, equity curve, risk metrics, reconciliation
-8. Sleep and repeat
+Target cycle:
+1. Manage existing positions first.
+2. Reconcile account before adding new risk.
+3. Build raw candidates only.
+4. Apply professional candidate filter.
+5. Open new paper trades through dynamic portfolio allocation.
+6. Reconcile again.
+7. Generate lightweight reports.
+8. Optional visual report.
 
-Important:
-This is paper trading only.
-No real orders are placed.
-Profitability is not guaranteed.
+Paper trading only. No real orders are placed.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -32,218 +31,172 @@ from backtesting.live_option_backtest_engine import (
     LiveOptionBacktestConfig,
     run_live_option_paper_backtest,
 )
-
 from execution.professional_candidate_filter import (
     ProfessionalFilterConfig,
     filter_candidate_file,
 )
-
 from execution.paper_trader import (
     PaperTraderConfig,
     open_paper_trades,
     print_paper_account_summary,
 )
-
 from execution.paper_position_manager import manage_paper_positions
+from execution.paper_account_reconciliation import generate_reconciliation_report
 from execution.paper_performance_report import generate_paper_performance_report
 from execution.paper_equity_curve import generate_equity_curve
 from execution.paper_risk_metrics import calculate_risk_metrics
-from execution.paper_account_reconciliation import generate_reconciliation_report
-from visualization.live_option_report import generate_live_option_report
 
 
 @dataclass
 class LiveSchedulerConfig:
-    """
-    Professional live paper scheduler configuration.
-    """
-
-    # Loop control
+    output_folder: str = "outputs"
     sleep_seconds: int = 1000
     max_cycles: int | None = 1
 
-    # Paper trading
-    initial_cash: float = 10_000.0
-    max_positions: int = 3
-    max_risk_per_trade: float = 0.01
-
-    # Raw scanner settings
-    historical_vol_start_date: str = "2023-01-01"
-    risk_free_rate: float = 0.04
-    min_days_to_expiry: float = 10.0
-    max_days_to_expiry: float = 30.0
-    min_market_price_usd: float = 10.0
-    max_bid_ask_spread_pct: float = 0.25
-    price_threshold: float = 0.10
-    volatility_threshold: float = 0.10
-    min_volatility: float = 0.10
-    max_volatility: float = 2.50
-    only_trade_cheap_options: bool = True
-
-    # Professional post-filter settings
-    min_combined_score: float = 0.15
-    max_price_diff_pct: float = -0.12
-    max_volatility_spread: float = -0.08
-    professional_max_bid_ask_spread_pct: float = 0.20
-    min_abs_delta: float = 0.25
-    max_abs_delta: float = 0.65
-
-    # Exit rules
-    take_profit_pct: float = 0.35
-    stop_loss_pct: float = -0.20
-    min_days_to_expiry_exit: float = 1.0
-
-    # Reports
-    run_visual_report: bool = False
-    show_plots: bool = False
-
-    # Files
-    output_folder: str = "outputs"
+    refresh_option_chain: bool = True
     option_chain_file: str = "outputs/live_eth_option_chain.csv"
     raw_candidates_file: str = "outputs/live_backtest_candidates.csv"
     filtered_candidates_file: str = "outputs/live_backtest_candidates_filtered.csv"
     rejected_candidates_file: str = "outputs/live_backtest_candidates_rejected.csv"
+
+    paper_cash_file: str = "outputs/paper_cash.csv"
     paper_positions_file: str = "outputs/paper_open_positions.csv"
     paper_trade_history_file: str = "outputs/paper_trade_history.csv"
-    paper_cash_file: str = "outputs/paper_cash.csv"
+
+    initial_cash: float = 10_000.0
+    max_risk_per_trade: float = 0.01
+
+    # Dynamic allocation settings.
+    max_positions: int = 30
+    target_positions: int = 4
+    max_new_positions_per_cycle: int = 2
+    normal_min_score: float = 0.25
+    expansion_min_score: float = 0.45
+    exceptional_min_score: float = 0.60
+    min_relative_to_best_score: float = 0.75
+
+    # Exit settings.
+    take_profit_pct: float = 0.30
+    stop_loss_pct: float = -0.25
+    min_days_to_expiry_exit: float = 1.5
+
+    # Candidate generation/filter settings.
+    historical_vol_start_date: str = "2023-01-01"
+    risk_free_rate: float = 0.04
+    min_days_to_expiry: float = 3.0
+    max_days_to_expiry: float = 45.0
+    min_market_price_usd: float = 5.0
+    max_bid_ask_spread_pct: float = 0.35
+    price_threshold: float = 0.10
+    volatility_threshold: float = 0.10
+    min_volatility: float = 0.10
+    max_volatility: float = 2.50
+    allow_calls: bool = True
+    allow_puts: bool = True
+    only_trade_cheap_options: bool = True
+
+    # Optional expensive reporting.
+    run_visual_report: bool = False
 
 
 def ensure_output_folder(folder: str) -> None:
     Path(folder).mkdir(parents=True, exist_ok=True)
 
 
-def file_exists_and_not_empty(file_path: str) -> bool:
-    path = Path(file_path)
-    return path.exists() and path.stat().st_size > 0
-
-
 def csv_has_rows(file_path: str) -> bool:
-    if not file_exists_and_not_empty(file_path):
+    path = Path(file_path)
+    if not path.exists() or path.stat().st_size == 0:
         return False
-
     try:
-        data = pd.read_csv(file_path, nrows=1)
+        return not pd.read_csv(path).empty
     except Exception:
         return False
 
-    return not data.empty
 
-
-def run_scanner_cycle(cfg: LiveSchedulerConfig) -> None:
+def build_dataclass_config(cls: type, values: dict[str, Any]) -> Any:
     """
-    Run raw live option candidate generation.
-
-    This writes:
-    - outputs/live_backtest_candidates.csv
+    Build external config dataclasses safely.
+    This lets the scheduler survive small differences between config versions.
     """
+    if not dataclasses.is_dataclass(cls):
+        return cls()
+    allowed = {field.name for field in dataclasses.fields(cls)}
+    kwargs = {key: value for key, value in values.items() if key in allowed}
+    return cls(**kwargs)
 
-    print("\n========== STEP 1: RAW OPTION SCANNER ==========")
 
-    scan_cfg = LiveOptionBacktestConfig(
-        refresh_option_chain=True,
-        option_chain_file=cfg.option_chain_file,
-        output_folder=cfg.output_folder,
-        historical_vol_start_date=cfg.historical_vol_start_date,
-        initial_cash=cfg.initial_cash,
-        max_risk_per_trade=cfg.max_risk_per_trade,
-        max_positions=cfg.max_positions,
-        risk_free_rate=cfg.risk_free_rate,
-        min_days_to_expiry=cfg.min_days_to_expiry,
-        max_days_to_expiry=cfg.max_days_to_expiry,
-        min_market_price_usd=cfg.min_market_price_usd,
-        max_bid_ask_spread_pct=cfg.max_bid_ask_spread_pct,
-        price_threshold=cfg.price_threshold,
-        volatility_threshold=cfg.volatility_threshold,
-        min_volatility=cfg.min_volatility,
-        max_volatility=cfg.max_volatility,
-        allow_calls=True,
-        allow_puts=True,
-        only_trade_cheap_options=cfg.only_trade_cheap_options,
+def build_scanner_config(cfg: LiveSchedulerConfig) -> LiveOptionBacktestConfig:
+    return build_dataclass_config(
+        LiveOptionBacktestConfig,
+        {
+            "refresh_option_chain": cfg.refresh_option_chain,
+            "option_chain_file": cfg.option_chain_file,
+            "output_folder": cfg.output_folder,
+            "historical_vol_start_date": cfg.historical_vol_start_date,
+            "initial_cash": cfg.initial_cash,
+            "max_risk_per_trade": cfg.max_risk_per_trade,
+            "max_positions": cfg.max_positions,
+            "risk_free_rate": cfg.risk_free_rate,
+            "min_days_to_expiry": cfg.min_days_to_expiry,
+            "max_days_to_expiry": cfg.max_days_to_expiry,
+            "min_market_price_usd": cfg.min_market_price_usd,
+            "max_bid_ask_spread_pct": cfg.max_bid_ask_spread_pct,
+            "price_threshold": cfg.price_threshold,
+            "volatility_threshold": cfg.volatility_threshold,
+            "min_volatility": cfg.min_volatility,
+            "max_volatility": cfg.max_volatility,
+            "allow_calls": cfg.allow_calls,
+            "allow_puts": cfg.allow_puts,
+            "only_trade_cheap_options": cfg.only_trade_cheap_options,
+        },
     )
 
-    run_live_option_paper_backtest(scan_cfg)
 
-    print("========== RAW SCANNER DONE ==========")
-
-
-def run_professional_filter_cycle(cfg: LiveSchedulerConfig) -> pd.DataFrame:
-    """
-    Apply professional filters to raw candidates.
-
-    This writes:
-    - outputs/live_backtest_candidates_filtered.csv
-    - outputs/live_backtest_candidates_rejected.csv
-    """
-
-    print("\n========== STEP 2: PROFESSIONAL CANDIDATE FILTER ==========")
-
-    filter_cfg = ProfessionalFilterConfig(
-        raw_candidates_file=cfg.raw_candidates_file,
-        filtered_candidates_file=cfg.filtered_candidates_file,
-        rejected_candidates_file=cfg.rejected_candidates_file,
-        historical_vol_start_date=cfg.historical_vol_start_date,
-        only_trade_cheap_options=cfg.only_trade_cheap_options,
-        min_combined_score=cfg.min_combined_score,
-        max_price_diff_pct=cfg.max_price_diff_pct,
-        max_volatility_spread=cfg.max_volatility_spread,
-        min_market_price_usd=cfg.min_market_price_usd,
-        max_bid_ask_spread_pct=cfg.professional_max_bid_ask_spread_pct,
-        min_days_to_expiry=cfg.min_days_to_expiry,
-        max_days_to_expiry=cfg.max_days_to_expiry,
-        min_abs_delta=cfg.min_abs_delta,
-        max_abs_delta=cfg.max_abs_delta,
+def build_filter_config(cfg: LiveSchedulerConfig) -> ProfessionalFilterConfig:
+    return build_dataclass_config(
+        ProfessionalFilterConfig,
+        {
+            "raw_candidates_file": cfg.raw_candidates_file,
+            "filtered_candidates_file": cfg.filtered_candidates_file,
+            "rejected_candidates_file": cfg.rejected_candidates_file,
+            "historical_vol_start_date": cfg.historical_vol_start_date,
+            "min_days_to_expiry": cfg.min_days_to_expiry,
+            "max_days_to_expiry": cfg.max_days_to_expiry,
+            "min_market_price_usd": cfg.min_market_price_usd,
+            "max_bid_ask_spread_pct": cfg.max_bid_ask_spread_pct,
+        },
     )
-
-    filtered = filter_candidate_file(filter_cfg)
-
-    print("========== PROFESSIONAL FILTER DONE ==========")
-
-    return filtered
 
 
 def build_paper_config(cfg: LiveSchedulerConfig) -> PaperTraderConfig:
-    """
-    Build persistent paper trader config.
-
-    Important:
-    paper_trader reads the FILTERED candidate file, not the raw candidate file.
-    """
-
     return PaperTraderConfig(
         candidates_file=cfg.filtered_candidates_file,
         positions_file=cfg.paper_positions_file,
         trade_history_file=cfg.paper_trade_history_file,
         initial_cash_file=cfg.paper_cash_file,
         initial_cash=cfg.initial_cash,
-        max_positions=cfg.max_positions,
         max_risk_per_trade=cfg.max_risk_per_trade,
+        max_positions=cfg.max_positions,
+        target_positions=cfg.target_positions,
+        max_new_positions_per_cycle=cfg.max_new_positions_per_cycle,
+        normal_min_score=cfg.normal_min_score,
+        expansion_min_score=cfg.expansion_min_score,
+        exceptional_min_score=cfg.exceptional_min_score,
+        min_relative_to_best_score=cfg.min_relative_to_best_score,
         only_trade_cheap_options=cfg.only_trade_cheap_options,
-        min_abs_mispricing_score=cfg.min_combined_score,
         min_market_price_usd=cfg.min_market_price_usd,
     )
 
 
-def reconciliation_is_ok() -> bool:
-    """
-    Run reconciliation and return True only if account state is clean.
-    """
-
-    report = generate_reconciliation_report()
-
+def reconciliation_is_ok(paper_cfg: PaperTraderConfig) -> bool:
+    report = generate_reconciliation_report(paper_cfg)
     if report.empty or "reconciliation_ok" not in report.columns:
         return False
-
-    value = report["reconciliation_ok"].iloc[0]
-
-    return bool(value)
+    return bool(report.iloc[-1]["reconciliation_ok"])
 
 
-def run_position_management_cycle(
-    paper_cfg: PaperTraderConfig,
-    cfg: LiveSchedulerConfig,
-) -> None:
-    print("\n========== STEP 3: POSITION MANAGEMENT ==========")
-
+def run_position_management_cycle(paper_cfg: PaperTraderConfig, cfg: LiveSchedulerConfig) -> None:
+    print("\n========== STEP 1: MANAGE OPEN POSITIONS ==========")
     manage_paper_positions(
         trader_config=paper_cfg,
         take_profit_pct=cfg.take_profit_pct,
@@ -251,220 +204,107 @@ def run_position_management_cycle(
         min_days_to_expiry=cfg.min_days_to_expiry_exit,
     )
 
-    print("========== POSITION MANAGEMENT DONE ==========")
+
+def run_scanner_cycle(cfg: LiveSchedulerConfig) -> None:
+    print("\n========== STEP 3: BUILD RAW CANDIDATES ==========")
+    scanner_cfg = build_scanner_config(cfg)
+    run_live_option_paper_backtest(scanner_cfg)
 
 
-def run_trade_opening_cycle(
-    paper_cfg: PaperTraderConfig,
-    cfg: LiveSchedulerConfig,
-) -> None:
-    print("\n========== STEP 4: OPEN PAPER TRADES ==========")
+def run_professional_filter_cycle(cfg: LiveSchedulerConfig) -> pd.DataFrame:
+    print("\n========== STEP 4: PROFESSIONAL FILTER ==========")
+    filter_cfg = build_filter_config(cfg)
+    filtered = filter_candidate_file(filter_cfg)
+    if filtered is None:
+        return pd.DataFrame()
+    return filtered
 
-    if not csv_has_rows(cfg.filtered_candidates_file):
-        print(
-            "No filtered candidates available. "
-            "Skipping new paper trade entries."
-        )
-        return
 
-    if not reconciliation_is_ok():
-        print(
-            "WARNING: Account reconciliation failed. "
-            "Skipping new trade entries to prevent corrupted accounting."
-        )
-        return
-
+def run_trade_opening_cycle(paper_cfg: PaperTraderConfig) -> None:
+    print("\n========== STEP 5: DYNAMIC ALLOCATION + OPEN ==========")
     open_paper_trades(paper_cfg)
 
-    print("========== PAPER TRADE OPENING DONE ==========")
 
-
-def run_reporting_cycle(
-    paper_cfg: PaperTraderConfig,
-    cfg: LiveSchedulerConfig,
-) -> None:
-    print("\n========== STEP 5: REPORTING ==========")
-
-    try:
-        generate_paper_performance_report()
-    except Exception:
-        print("WARNING: Performance report failed.")
-        traceback.print_exc()
-
-    try:
-        print_paper_account_summary(paper_cfg)
-    except Exception:
-        print("WARNING: Paper account summary failed.")
-        traceback.print_exc()
-
-    try:
-        generate_equity_curve()
-    except Exception:
-        print("WARNING: Equity curve generation failed.")
-        traceback.print_exc()
-
-    try:
-        calculate_risk_metrics()
-    except Exception:
-        print("WARNING: Risk metrics calculation failed.")
-        traceback.print_exc()
-
-    try:
-        generate_reconciliation_report()
-    except Exception:
-        print("WARNING: Final reconciliation failed.")
-        traceback.print_exc()
+def run_reporting_cycle(paper_cfg: PaperTraderConfig, cfg: LiveSchedulerConfig) -> None:
+    print("\n========== STEP 7: REPORTING ==========")
+    generate_paper_performance_report(paper_cfg)
+    generate_equity_curve(paper_cfg)
+    calculate_risk_metrics()
+    print_paper_account_summary(paper_cfg)
 
     if cfg.run_visual_report:
         try:
-            generate_live_option_report(
-                candidates_file=cfg.filtered_candidates_file,
-                positions_file=cfg.paper_positions_file,
-                show_plot=cfg.show_plots,
-            )
-        except Exception:
-            print("WARNING: Visual report generation failed.")
-            traceback.print_exc()
+            from visualization.live_option_report import generate_live_option_report
 
-    print("========== REPORTING DONE ==========")
+            generate_live_option_report(
+                candidates_file=cfg.raw_candidates_file,
+                positions_file=cfg.paper_positions_file,
+                show_plot=False,
+            )
+        except Exception as error:
+            print(f"Visual report skipped: {error}")
 
 
 def run_one_cycle(cfg: LiveSchedulerConfig) -> None:
-    print("\n====================================================")
-    print(f"STARTING PROFESSIONAL PAPER CYCLE: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print("====================================================")
-
     ensure_output_folder(cfg.output_folder)
-
     paper_cfg = build_paper_config(cfg)
 
-    # 1. Generate raw candidates
-    try:
-        run_scanner_cycle(cfg)
-    except Exception:
-        print("WARNING: Raw scanner failed.")
-        traceback.print_exc()
-
-    # 2. Apply professional candidate filter
-    try:
-        run_professional_filter_cycle(cfg)
-    except Exception:
-        print("WARNING: Professional candidate filter failed.")
-        traceback.print_exc()
-
-    # 3. Manage old positions before opening new positions
-    try:
-        run_position_management_cycle(
-            paper_cfg=paper_cfg,
-            cfg=cfg,
-        )
-    except Exception:
-        print("WARNING: Position management failed.")
-        traceback.print_exc()
-
-    # 4. Open new paper trades only if account reconciles
-    try:
-        run_trade_opening_cycle(
-            paper_cfg=paper_cfg,
-            cfg=cfg,
-        )
-    except Exception:
-        print("WARNING: Trade opening failed.")
-        traceback.print_exc()
-
-    # 5. Reports
-    try:
-        run_reporting_cycle(
-            paper_cfg=paper_cfg,
-            cfg=cfg,
-        )
-    except Exception:
-        print("WARNING: Reporting cycle failed.")
-        traceback.print_exc()
-
     print("\n====================================================")
-    print(f"CYCLE FINISHED: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"STARTING PAPER CYCLE: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print("====================================================")
+
+    run_position_management_cycle(paper_cfg, cfg)
+
+    print("\n========== STEP 2: RECONCILE BEFORE NEW RISK ==========")
+    if not reconciliation_is_ok(paper_cfg):
+        print("Reconciliation failed. Skipping scanner/opening/reporting for safety.")
+        return
+
+    run_scanner_cycle(cfg)
+    filtered = run_professional_filter_cycle(cfg)
+
+    if filtered.empty and not csv_has_rows(cfg.filtered_candidates_file):
+        print("No filtered candidates. Skipping trade opening.")
+    else:
+        run_trade_opening_cycle(paper_cfg)
+
+    print("\n========== STEP 6: RECONCILE AFTER OPENING ==========")
+    reconciliation_is_ok(paper_cfg)
+
+    run_reporting_cycle(paper_cfg, cfg)
 
 
 def run_live_scheduler(cfg: LiveSchedulerConfig | None = None) -> None:
     if cfg is None:
         cfg = LiveSchedulerConfig()
 
-    ensure_output_folder(cfg.output_folder)
-
-    print("\n========== PROFESSIONAL ETH OPTIONS PAPER SCHEDULER ==========")
-    print(f"Initial cash:                 ${cfg.initial_cash:,.2f}")
-    print(f"Max positions:                {cfg.max_positions}")
-    print(f"Risk per trade:               {cfg.max_risk_per_trade:.2%}")
-    print(f"Raw price threshold:          {cfg.price_threshold:.2%}")
-    print(f"Raw volatility threshold:     {cfg.volatility_threshold:.2%}")
-    print(f"Professional min score:       {cfg.min_combined_score:.4f}")
-    print(f"Max spread:                   {cfg.professional_max_bid_ask_spread_pct:.2%}")
-    print(f"DTE window:                   {cfg.min_days_to_expiry} - {cfg.max_days_to_expiry}")
-    print(f"Take profit:                  {cfg.take_profit_pct:.2%}")
-    print(f"Stop loss:                    {cfg.stop_loss_pct:.2%}")
-    print(f"Sleep seconds:                {cfg.sleep_seconds}")
-    print(f"Max cycles:                   {cfg.max_cycles}")
-    print("===============================================================")
-
     cycle = 0
-
     while True:
         cycle += 1
-
-        print(f"\n#################### CYCLE {cycle} ####################")
-
         try:
             run_one_cycle(cfg)
         except KeyboardInterrupt:
             print("Scheduler stopped by user.")
             break
         except Exception:
-            print("FATAL ERROR in scheduler loop.")
+            print("ERROR during scheduler cycle:")
             traceback.print_exc()
 
         if cfg.max_cycles is not None and cycle >= cfg.max_cycles:
-            print("Reached max_cycles. Scheduler exiting.")
+            print(f"Reached max_cycles={cfg.max_cycles}. Stopping scheduler.")
             break
 
-        try:
-            print(f"Sleeping for {cfg.sleep_seconds} seconds...")
-            time.sleep(cfg.sleep_seconds)
-        except KeyboardInterrupt:
-            print("Scheduler stopped during sleep.")
-            break
+        print(f"Sleeping {cfg.sleep_seconds} seconds...")
+        time.sleep(cfg.sleep_seconds)
 
 
 if __name__ == "__main__":
-    # First safe test: one cycle only.
     config = LiveSchedulerConfig(
-        sleep_seconds=1000,
+        sleep_seconds=800,
         max_cycles=200,
-
-        # Professional stricter settings
-        initial_cash=10_000.0,
-        max_positions=10,
-        max_risk_per_trade=0.01,
-
-        min_days_to_expiry=10.0,
-        max_days_to_expiry=30.0,
-        min_market_price_usd=10.0,
-        max_bid_ask_spread_pct=0.25,
-
-        price_threshold=0.10,
-        volatility_threshold=0.10,
-
-        min_combined_score=0.15,
-        max_price_diff_pct=-0.12,
-        max_volatility_spread=-0.08,
-        professional_max_bid_ask_spread_pct=0.20,
-
-        take_profit_pct=0.35,
-        stop_loss_pct=-0.20,
-
+        max_positions=30,
+        target_positions=4,
+        max_new_positions_per_cycle=2,
         run_visual_report=False,
-        show_plots=False,
     )
-
     run_live_scheduler(config)
