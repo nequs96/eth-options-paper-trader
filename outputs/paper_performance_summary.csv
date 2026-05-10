@@ -1,2 +1,2 @@
-timestamp,cash,open_positions,open_current_value,unrealized_pnl,estimated_equity,total_return,closed_trades,winning_trades,losing_trades,win_rate,realized_pnl,average_win,average_loss,profit_factor
-2026-05-09T09:35:15.262727+00:00,9801.0,2,199.0,0.0,10000.0,0.0,0,0,0,0.0,0.0,0.0,0.0,0.0
+timestamp,cash,open_cost_basis,open_position_value,estimated_equity,realized_pnl,unrealized_pnl,actual_pnl_vs_start,total_return,open_positions,available_candidates_passed,sharpe_ratio,sortino_ratio,profit_factor,profit_ratio,win_rate,max_drawdown
+2026-05-10T16:14:45.124606+00:00,10000.0,0.0,0.0,10000.0,0.0,0.0,0.0,0.0,0,56,0.0,0.0,0.0,0.0,0.0,0.0

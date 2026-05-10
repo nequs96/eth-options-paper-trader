@@ -1,2 +1,2 @@
-timestamp,observations,current_equity,total_return,max_drawdown,current_drawdown,mean_period_return,period_volatility,sharpe_ratio,sortino_ratio,best_period_return,worst_period_return
-2026-05-09T09:35:15.265504+00:00,1,10000.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+timestamp,status,observations,periods_per_year,current_equity,total_return,max_drawdown,current_drawdown,mean_period_return,volatility_period,sharpe_ratio,sortino_ratio,closed_trades,winning_trades,losing_trades,win_rate,gross_profit,gross_loss,net_realized_pnl,profit_factor,profit_ratio,average_win,average_loss
+2026-05-10T16:14:45.128517+00:00,ok,1,365,10000.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

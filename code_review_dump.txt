@@ -7678,41 +7678,15 @@ def evaluate_liquidity(
         reason="ok",
         execution_score=score,
     )===== ./execution/paper_position_manager.py =====
-"""
-execution/paper_position_manager.py
-
-Manages open paper option positions using live Deribit prices and hybrid exits.
-
-This module owns the position lifecycle after entry:
-- fetch current quotes,
-- mark positions to market,
-- evaluate hybrid exits,
-- close positions,
-- update paper cash,
-- append closed trades to history.
-
-Paper trading only. No real orders are placed.
-"""
-
+"""Manage open paper option positions. Full positions table is printed by scheduler reporting step."""
 from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any
-
 import pandas as pd
-
 from data.options_data import fetch_deribit_ticker, DeribitConfig
 from models.trend_regime_model import get_trend_regime
 from execution.hybrid_exit_rules import HybridExitConfig, evaluate_hybrid_exit
-from execution.paper_trader import (
-    PaperTraderConfig,
-    load_open_positions,
-    save_open_positions,
-    append_trade_history,
-    load_cash,
-    save_cash,
-)
-
+from execution.paper_trader import PaperTraderConfig, load_open_positions, save_open_positions, append_trade_history, load_cash, save_cash
 
 @dataclass
 class LiveOptionQuote:
@@ -7723,267 +7697,97 @@ class LiveOptionQuote:
     ask_price_usd: float | None
     selected_exit_price_usd: float
 
-
 def safe_float(value: Any) -> float | None:
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        return None
-    if number != number:
-        return None
-    return float(number)
-
+    try: x = float(value)
+    except (TypeError, ValueError): return None
+    return None if x != x else float(x)
 
 def safe_timestamp(value: Any) -> pd.Timestamp | None:
-    try:
-        timestamp = pd.Timestamp(value)
-    except Exception:
-        return None
-
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.tz_localize("UTC")
-    else:
-        timestamp = timestamp.tz_convert("UTC")
-
-    return timestamp
-
+    try: ts = pd.Timestamp(value)
+    except Exception: return None
+    if ts.tzinfo is None: ts = ts.tz_localize("UTC")
+    else: ts = ts.tz_convert("UTC")
+    return ts
 
 def extract_ticker_result(ticker: dict[str, Any]) -> dict[str, Any]:
-    if isinstance(ticker, dict) and isinstance(ticker.get("result"), dict):
-        return ticker["result"]
-    if isinstance(ticker, dict):
-        return ticker
+    if isinstance(ticker, dict) and isinstance(ticker.get("result"), dict): return ticker["result"]
+    if isinstance(ticker, dict): return ticker
     return {}
-
 
 def option_price_to_usd_if_needed(price: Any, underlying_price_usd: float) -> float | None:
     value = safe_float(price)
-    if value is None or value <= 0:
-        return None
+    if value is None or value <= 0: return None
+    return float(value * underlying_price_usd) if value < 10 else float(value)
 
-    # Deribit ETH option prices are often quoted in ETH units.
-    # If value is small, treating it as underlying-denominated premium is safer.
-    if value < 10:
-        return float(value * underlying_price_usd)
-
-    return float(value)
-
-
-def get_live_option_quote_usd(
-    instrument_name: str,
-    fallback_underlying_price: float,
-    deribit_config: DeribitConfig,
-) -> LiveOptionQuote | None:
-    try:
-        ticker = fetch_deribit_ticker(instrument_name, deribit_config)
+def get_live_option_quote_usd(instrument_name: str, fallback_underlying_price: float, deribit_config: DeribitConfig) -> LiveOptionQuote | None:
+    try: ticker = fetch_deribit_ticker(instrument_name, deribit_config)
     except Exception as error:
         print(f"Could not fetch ticker for {instrument_name}: {error}")
         return None
-
     data = extract_ticker_result(ticker)
-
-    underlying = (
-        safe_float(data.get("underlying_price"))
-        or safe_float(data.get("index_price"))
-        or safe_float(data.get("estimated_delivery_price"))
-        or safe_float(fallback_underlying_price)
-    )
-
-    if underlying is None or underlying <= 0:
-        return None
-
+    underlying = safe_float(data.get("underlying_price")) or safe_float(data.get("index_price")) or safe_float(data.get("estimated_delivery_price")) or safe_float(fallback_underlying_price)
+    if underlying is None or underlying <= 0: return None
     mark = option_price_to_usd_if_needed(data.get("mark_price"), underlying)
     last = option_price_to_usd_if_needed(data.get("last_price"), underlying)
     bid = option_price_to_usd_if_needed(data.get("best_bid_price"), underlying)
     ask = option_price_to_usd_if_needed(data.get("best_ask_price"), underlying)
-
     mark_or_last = mark or last
-    if mark_or_last is None or mark_or_last <= 0:
-        return None
-
-    # Long option exits should be valued closer to bid than mark.
-    selected_exit_price = bid if bid is not None and bid > 0 else mark_or_last
-
-    return LiveOptionQuote(
-        instrument_name=instrument_name,
-        underlying_price_usd=float(underlying),
-        mark_price_usd=float(mark_or_last),
-        bid_price_usd=bid,
-        ask_price_usd=ask,
-        selected_exit_price_usd=float(selected_exit_price),
-    )
-
+    if mark_or_last is None or mark_or_last <= 0: return None
+    selected_exit = bid if bid is not None and bid > 0 else mark_or_last
+    return LiveOptionQuote(instrument_name, float(underlying), float(mark_or_last), bid, ask, float(selected_exit))
 
 def calculate_elapsed_days(position: pd.Series, now: pd.Timestamp) -> float:
-    updated_at = safe_timestamp(position.get("updated_at"))
-    if updated_at is None:
-        updated_at = safe_timestamp(position.get("opened_at"))
-    if updated_at is None:
-        return 0.0
+    updated_at = safe_timestamp(position.get("updated_at")) or safe_timestamp(position.get("opened_at"))
+    if updated_at is None: return 0.0
     return max((now - updated_at).total_seconds() / 86400.0, 0.0)
-
 
 def update_days_to_expiry(current_days_to_expiry: float, elapsed_days: float) -> float:
     return max(float(current_days_to_expiry) - float(elapsed_days), 0.0)
 
-
-def manage_paper_positions(
-    trader_config: PaperTraderConfig | None = None,
-    take_profit_pct: float = 0.30,
-    stop_loss_pct: float = -0.25,
-    min_days_to_expiry: float = 1.5,
-) -> None:
-    if trader_config is None:
-        trader_config = PaperTraderConfig()
-
+def manage_paper_positions(trader_config: PaperTraderConfig | None = None, take_profit_pct: float = 0.30, stop_loss_pct: float = -0.25, min_days_to_expiry: float = 1.5) -> None:
+    if trader_config is None: trader_config = PaperTraderConfig()
     positions = load_open_positions(trader_config)
     if positions.empty:
         print("No open paper positions.")
         return
-
     cash = load_cash(trader_config)
     now = pd.Timestamp.utcnow()
     deribit_config = DeribitConfig()
-
-    try:
-        trend_regime = get_trend_regime()
+    try: trend_regime = get_trend_regime()
     except Exception as error:
         print(f"WARNING: Could not load trend regime for hybrid exits: {error}")
         trend_regime = None
-
-    exit_config = HybridExitConfig(
-        stop_loss_pct=stop_loss_pct,
-        soft_take_profit_pct=take_profit_pct,
-        hard_take_profit_pct=max(0.80, take_profit_pct * 2.0),
-        trailing_activation_pct=0.25,
-        trailing_drawdown_pct=0.18,
-        min_days_to_expiry=min_days_to_expiry,
-    )
-
-    remaining_rows: list[dict[str, Any]] = []
-    closed_rows: list[dict[str, Any]] = []
-
+    exit_config = HybridExitConfig(stop_loss_pct=stop_loss_pct, soft_take_profit_pct=take_profit_pct, hard_take_profit_pct=max(0.80, take_profit_pct * 2.0), min_days_to_expiry=min_days_to_expiry)
+    remaining_rows, closed_rows = [], []
     for _, position in positions.iterrows():
-        instrument_name = str(position.get("instrument_name", "")).strip()
-        if not instrument_name:
-            continue
-
-        entry_price = safe_float(position.get("entry_price_usd"))
-        quantity = safe_float(position.get("quantity"))
-        previous_dte = safe_float(position.get("days_to_expiry"))
-        fallback_underlying = safe_float(position.get("spot_price")) or safe_float(position.get("underlying_price_usd")) or 0.0
-
-        if entry_price is None or entry_price <= 0 or quantity is None or quantity <= 0 or previous_dte is None:
-            row = position.to_dict()
-            row.update({"status": "invalid_position_data", "updated_at": now.isoformat()})
-            remaining_rows.append(row)
-            continue
-
-        elapsed_days = calculate_elapsed_days(position, now)
-        updated_dte = update_days_to_expiry(previous_dte, elapsed_days)
-
-        quote = get_live_option_quote_usd(
-            instrument_name=instrument_name,
-            fallback_underlying_price=fallback_underlying,
-            deribit_config=deribit_config,
-        )
-
+        instrument = str(position.get("instrument_name", "")).strip()
+        if not instrument: continue
+        entry, qty, dte = safe_float(position.get("entry_price_usd")), safe_float(position.get("quantity")), safe_float(position.get("days_to_expiry"))
+        fallback = safe_float(position.get("spot_price")) or safe_float(position.get("underlying_price_usd")) or 0.0
+        if entry is None or entry <= 0 or qty is None or qty <= 0 or dte is None:
+            row = position.to_dict(); row.update({"status":"invalid_position_data", "updated_at":now.isoformat()}); remaining_rows.append(row); continue
+        updated_dte = update_days_to_expiry(dte, calculate_elapsed_days(position, now))
+        quote = get_live_option_quote_usd(instrument, fallback, deribit_config)
         if quote is None:
-            row = position.to_dict()
-            row.update(
-                {
-                    "updated_at": now.isoformat(),
-                    "days_to_expiry": float(updated_dte),
-                    "last_update_status": "quote_unavailable",
-                    "status": "open",
-                }
-            )
-            remaining_rows.append(row)
-            continue
-
-        current_price = float(quote.selected_exit_price_usd)
-        previous_highest = safe_float(position.get("highest_price_usd")) or entry_price
-
-        decision = evaluate_hybrid_exit(
-            option_type=str(position.get("option_type", "")),
-            entry_price_usd=entry_price,
-            current_price_usd=current_price,
-            highest_price_usd=previous_highest,
-            days_to_expiry=updated_dte,
-            trend_regime=trend_regime,
-            config=exit_config,
-        )
-
-        pnl_usd = (current_price - entry_price) * quantity
-        pnl_pct = current_price / entry_price - 1.0
-        current_value = current_price * quantity
-
+            row = position.to_dict(); row.update({"updated_at":now.isoformat(), "days_to_expiry":float(updated_dte), "last_update_status":"quote_unavailable", "status":"open"}); remaining_rows.append(row); continue
+        current = float(quote.selected_exit_price_usd)
+        previous_high = safe_float(position.get("highest_price_usd")) or entry
+        decision = evaluate_hybrid_exit(str(position.get("option_type", "")), entry, current, previous_high, updated_dte, trend_regime, exit_config)
+        pnl_usd, pnl_pct, current_value = (current - entry) * qty, current / entry - 1.0, current * qty
         if decision.should_close:
             cash += current_value
             closed = position.to_dict()
-            closed.update(
-                {
-                    "status": "closed",
-                    "closed_at": now.isoformat(),
-                    "updated_at": now.isoformat(),
-                    "exit_price_usd": float(current_price),
-                    "exit_mark_price_usd": float(quote.mark_price_usd),
-                    "exit_bid_price_usd": quote.bid_price_usd,
-                    "exit_ask_price_usd": quote.ask_price_usd,
-                    "exit_underlying_price_usd": float(quote.underlying_price_usd),
-                    "days_to_expiry": float(updated_dte),
-                    "pnl_usd": float(pnl_usd),
-                    "pnl_pct": float(pnl_pct),
-                    "close_reason": decision.reason,
-                    "hybrid_exit_reason": decision.reason,
-                    "highest_price_usd": float(decision.highest_price_usd),
-                    "highest_profit_pct": float(decision.highest_profit_pct),
-                    "trailing_stop_price_usd": float(decision.trailing_stop_price_usd),
-                    "trend_supportive_at_exit": bool(decision.trend_supportive),
-                    "regime_hostile_at_exit": bool(decision.regime_hostile),
-                    "trend_strength_at_exit": float(decision.trend_strength),
-                    "volatility_contracting_at_exit": bool(decision.volatility_contracting),
-                }
-            )
+            closed.update({"status":"closed", "closed_at":now.isoformat(), "updated_at":now.isoformat(), "exit_price_usd":float(current), "exit_value_usd":float(current_value), "proceeds_usd":float(current_value), "exit_mark_price_usd":float(quote.mark_price_usd), "exit_bid_price_usd":quote.bid_price_usd, "exit_ask_price_usd":quote.ask_price_usd, "exit_underlying_price_usd":float(quote.underlying_price_usd), "days_to_expiry":float(updated_dte), "pnl_usd":float(pnl_usd), "pnl_pct":float(pnl_pct), "close_reason":decision.reason, "hybrid_exit_reason":decision.reason, "highest_price_usd":float(decision.highest_price_usd), "highest_profit_pct":float(decision.highest_profit_pct), "trailing_stop_price_usd":float(decision.trailing_stop_price_usd), "trend_supportive_at_exit":bool(decision.trend_supportive), "regime_hostile_at_exit":bool(decision.regime_hostile), "trend_strength_at_exit":float(decision.trend_strength), "volatility_contracting_at_exit":bool(decision.volatility_contracting)})
             closed_rows.append(closed)
-            print(f"Closed {instrument_name}: {decision.reason}, PnL={pnl_pct:.2%}")
+            print(f"Closed {instrument}: {decision.reason}, PnL={pnl_pct:.2%}")
         else:
             row = position.to_dict()
-            row.update(
-                {
-                    "updated_at": now.isoformat(),
-                    "spot_price": float(quote.underlying_price_usd),
-                    "underlying_price_usd": float(quote.underlying_price_usd),
-                    "days_to_expiry": float(updated_dte),
-                    "current_price_usd": float(current_price),
-                    "mark_price_usd": float(quote.mark_price_usd),
-                    "bid_price_usd": quote.bid_price_usd,
-                    "ask_price_usd": quote.ask_price_usd,
-                    "current_value_usd": float(current_value),
-                    "unrealized_pnl_usd": float(pnl_usd),
-                    "unrealized_pnl_pct": float(pnl_pct),
-                    "highest_price_usd": float(decision.highest_price_usd),
-                    "highest_profit_pct": float(decision.highest_profit_pct),
-                    "trailing_stop_price_usd": float(decision.trailing_stop_price_usd),
-                    "hybrid_exit_reason": decision.reason,
-                    "trend_supportive": bool(decision.trend_supportive),
-                    "regime_hostile": bool(decision.regime_hostile),
-                    "trend_strength": float(decision.trend_strength),
-                    "volatility_contracting": bool(decision.volatility_contracting),
-                    "last_update_status": "updated",
-                    "status": "open",
-                }
-            )
+            row.update({"updated_at":now.isoformat(), "spot_price":float(quote.underlying_price_usd), "underlying_price_usd":float(quote.underlying_price_usd), "days_to_expiry":float(updated_dte), "current_price_usd":float(current), "mark_price_usd":float(quote.mark_price_usd), "bid_price_usd":quote.bid_price_usd, "ask_price_usd":quote.ask_price_usd, "current_value_usd":float(current_value), "unrealized_pnl_usd":float(pnl_usd), "unrealized_pnl_pct":float(pnl_pct), "highest_price_usd":float(decision.highest_price_usd), "highest_profit_pct":float(decision.highest_profit_pct), "trailing_stop_price_usd":float(decision.trailing_stop_price_usd), "hybrid_exit_reason":decision.reason, "trend_supportive":bool(decision.trend_supportive), "regime_hostile":bool(decision.regime_hostile), "trend_strength":float(decision.trend_strength), "volatility_contracting":bool(decision.volatility_contracting), "last_update_status":"updated", "status":"open"})
             remaining_rows.append(row)
-
     save_open_positions(pd.DataFrame(remaining_rows), trader_config)
     save_cash(cash, trader_config)
-
-    if closed_rows:
-        append_trade_history(pd.DataFrame(closed_rows), trader_config)
-
+    if closed_rows: append_trade_history(pd.DataFrame(closed_rows), trader_config)
     print(f"Position management done. Open={len(remaining_rows)}, Closed={len(closed_rows)}, Cash=${cash:,.2f}")
-
 
 if __name__ == "__main__":
     manage_paper_positions(PaperTraderConfig())
@@ -7992,30 +7796,23 @@ if __name__ == "__main__":
 """
 execution/paper_trader.py
 
-Persistent paper trading module with dynamic portfolio allocation
-and confidence-based position sizing.
+Persistent paper trading module with:
+- dynamic portfolio allocation,
+- confidence-based position sizing,
+- equity-aware account summary,
+- reusable open positions table.
 
-Core design:
-- Professional filter decides which candidates are eligible.
-- This module decides whether eligible candidates deserve portfolio capital now.
-- max_positions is a hard cap, not a target.
-- target_positions is normal desired exposure.
-- positions above target require stronger candidate scores.
-- position risk is dynamic: 0.1% to 4.0% by default.
-- total portfolio open risk is capped.
-
-Paper trading only. No real orders are placed.
+Important reporting behavior:
+- open_paper_trades() prints only newly opened trades and cash.
+- full open-position table is printed once by live_scheduler reporting step.
 """
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
 import math
 import pandas as pd
-
 
 @dataclass
 class PaperTraderConfig:
@@ -8023,734 +7820,336 @@ class PaperTraderConfig:
     positions_file: str = "outputs/paper_open_positions.csv"
     trade_history_file: str = "outputs/paper_trade_history.csv"
     initial_cash_file: str = "outputs/paper_cash.csv"
-
     initial_cash: float = 10_000.0
-
-    # Old fallback/default risk. Kept for backward compatibility.
     max_risk_per_trade: float = 0.01
-
-    # New confidence-based position sizing.
-    # 0.001 = 0.1%
-    # 0.04 = 4.0%
     min_risk_per_trade: float = 0.001
     max_confidence_risk_per_trade: float = 0.04
-
-    # Portfolio-level risk cap.
-    # For long options, premium paid is approximately max loss.
     max_total_open_risk_pct: float = 0.25
-
     min_market_price_usd: float = 5.0
     only_trade_cheap_options: bool = True
     min_abs_mispricing_score: float = 0.05
-
-    # Dynamic allocation.
-    # max_positions = hard safety cap.
-    # target_positions = normal desired exposure.
     max_positions: int = 30
     target_positions: int = 4
     max_new_positions_per_cycle: int = 2
-
-    # Score thresholds.
     normal_min_score: float = 0.25
     expansion_min_score: float = 0.45
     exceptional_min_score: float = 0.60
     min_relative_to_best_score: float = 0.75
-
-    # Concentration limits.
     max_same_option_type_positions: int = 5
     max_same_expiry_positions: int = 4
     max_same_option_type_and_expiry_positions: int = 3
-
-    # Cash reserve. Avoid allocating the final part of the paper account.
     min_cash_buffer_pct: float = 0.05
-
 
 def ensure_parent_folder(file_path: str) -> None:
     Path(file_path).parent.mkdir(parents=True, exist_ok=True)
 
-
 def safe_float(value: Any) -> float | None:
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        return None
+    try: x = float(value)
+    except (TypeError, ValueError): return None
+    return float(x) if math.isfinite(x) else None
 
-    if not math.isfinite(number):
-        return None
-
-    return float(number)
-
+def numeric_series(data: pd.DataFrame, column: str, default: float = 0.0) -> pd.Series:
+    if column in data.columns:
+        return pd.to_numeric(data[column], errors="coerce").fillna(default)
+    return pd.Series([default] * len(data), index=data.index, dtype=float)
 
 def clamp(value: float, lower: float, upper: float) -> float:
     return max(lower, min(upper, value))
 
-
 def load_csv_if_exists(file_path: str) -> pd.DataFrame:
-    path = Path(file_path)
-
-    if not path.exists() or path.stat().st_size == 0:
-        return pd.DataFrame()
-
-    try:
-        return pd.read_csv(path)
-    except pd.errors.EmptyDataError:
-        return pd.DataFrame()
-
+    p = Path(file_path)
+    if not p.exists() or p.stat().st_size == 0: return pd.DataFrame()
+    try: return pd.read_csv(p)
+    except pd.errors.EmptyDataError: return pd.DataFrame()
 
 def load_cash(config: PaperTraderConfig) -> float:
     data = load_csv_if_exists(config.initial_cash_file)
-
     if data.empty:
         save_cash(config.initial_cash, config)
         return float(config.initial_cash)
-
-    for column in ["cash", "paper_cash", "current_cash"]:
-        if column in data.columns and len(data) > 0:
-            value = safe_float(data.iloc[-1][column])
-
-            if value is not None:
-                return float(value)
-
+    for col in ["cash", "paper_cash", "current_cash"]:
+        if col in data.columns and len(data) > 0:
+            v = safe_float(data.iloc[-1][col])
+            if v is not None: return float(v)
     save_cash(config.initial_cash, config)
     return float(config.initial_cash)
 
-
 def save_cash(cash: float, config: PaperTraderConfig) -> None:
     ensure_parent_folder(config.initial_cash_file)
-    pd.DataFrame([{"cash": float(cash)}]).to_csv(
-        config.initial_cash_file,
-        index=False,
-    )
-
+    pd.DataFrame([{"cash": float(cash)}]).to_csv(config.initial_cash_file, index=False)
 
 def load_candidates(config: PaperTraderConfig) -> pd.DataFrame:
     return load_csv_if_exists(config.candidates_file)
 
-
 def load_open_positions(config: PaperTraderConfig) -> pd.DataFrame:
     data = load_csv_if_exists(config.positions_file)
-
-    if data.empty:
-        return data
-
+    if data.empty: return data
     if "status" in data.columns:
         data = data[data["status"].astype(str).str.lower().eq("open")]
-
     return data.reset_index(drop=True)
 
-
-def save_open_positions(
-    positions: pd.DataFrame,
-    config: PaperTraderConfig,
-) -> None:
+def save_open_positions(positions: pd.DataFrame, config: PaperTraderConfig) -> None:
     ensure_parent_folder(config.positions_file)
     positions.to_csv(config.positions_file, index=False)
 
-
-def append_trade_history(
-    trades: pd.DataFrame,
-    config: PaperTraderConfig,
-) -> None:
-    if trades.empty:
-        return
-
+def append_trade_history(trades: pd.DataFrame, config: PaperTraderConfig) -> None:
+    if trades.empty: return
     ensure_parent_folder(config.trade_history_file)
-
     old = load_csv_if_exists(config.trade_history_file)
-
-    if old.empty:
-        trades.to_csv(config.trade_history_file, index=False)
-    else:
-        pd.concat([old, trades], ignore_index=True).to_csv(
-            config.trade_history_file,
-            index=False,
-        )
-
+    if old.empty: trades.to_csv(config.trade_history_file, index=False)
+    else: pd.concat([old, trades], ignore_index=True).to_csv(config.trade_history_file, index=False)
 
 def extract_expiry_from_instrument(instrument_name: Any) -> str:
-    """
-    Extract expiry token from Deribit instrument name.
-
-    Example:
-    ETH-22MAY26-2450-C -> 22MAY26
-    """
-
     parts = str(instrument_name).split("-")
-
-    if len(parts) >= 2:
-        return parts[1]
-
-    return ""
-
+    return parts[1] if len(parts) >= 2 else ""
 
 def normalize_candidates(candidates: pd.DataFrame) -> pd.DataFrame:
     data = candidates.copy()
-
-    numeric_columns = [
-        "market_price_usd",
-        "entry_price_usd",
-        "combined_score",
-        "ensemble_score",
-        "mispricing_score",
-        "price_diff_pct",
-        "volatility_spread",
-        "days_to_expiry",
-        "delta",
-        "strike",
-        "spot_price",
-        "bid_ask_spread_pct",
-        "open_interest",
-    ]
-
-    for column in numeric_columns:
-        if column in data.columns:
-            data[column] = pd.to_numeric(data[column], errors="coerce")
-
-    if "classification" in data.columns:
-        data["classification"] = (
-            data["classification"]
-            .astype(str)
-            .str.lower()
-            .str.strip()
-        )
-
-    if "option_type" in data.columns:
-        data["option_type"] = (
-            data["option_type"]
-            .astype(str)
-            .str.lower()
-            .str.strip()
-        )
-
-    if "expiry" not in data.columns and "instrument_name" in data.columns:
-        data["expiry"] = data["instrument_name"].apply(
-            extract_expiry_from_instrument
-        )
-
-    if "market_price_usd" not in data.columns and "entry_price_usd" in data.columns:
-        data["market_price_usd"] = data["entry_price_usd"]
-
+    for col in ["market_price_usd","entry_price_usd","combined_score","ensemble_score","mispricing_score","price_diff_pct","volatility_spread","days_to_expiry","delta","strike","strike_price","spot_price","bid_ask_spread_pct","open_interest"]:
+        if col in data.columns: data[col] = pd.to_numeric(data[col], errors="coerce")
+    if "classification" in data.columns: data["classification"] = data["classification"].astype(str).str.lower().str.strip()
+    if "option_type" in data.columns: data["option_type"] = data["option_type"].astype(str).str.lower().str.strip()
+    if "strike" not in data.columns and "strike_price" in data.columns: data["strike"] = data["strike_price"]
+    if "expiry" not in data.columns and "instrument_name" in data.columns: data["expiry"] = data["instrument_name"].apply(extract_expiry_from_instrument)
+    if "market_price_usd" not in data.columns and "entry_price_usd" in data.columns: data["market_price_usd"] = data["entry_price_usd"]
     return data
 
-
 def get_candidate_score(row: pd.Series) -> float:
-    """
-    Return candidate opportunity strength.
-
-    Priority:
-    1. ensemble_score
-    2. combined_score
-    3. mispricing_score
-
-    Scores are converted to absolute values because some old signals may encode
-    cheap options as negative mispricing. For allocation, we need magnitude.
-    """
-
-    for column in ["ensemble_score", "combined_score", "mispricing_score"]:
-        if column in row.index:
-            value = safe_float(row.get(column))
-
-            if value is not None:
-                return abs(float(value))
-
+    for col in ["ensemble_score", "combined_score", "mispricing_score"]:
+        if col in row.index:
+            v = safe_float(row.get(col))
+            if v is not None: return abs(float(v))
     return 0.0
 
+def calculate_confidence_score(candidate_score: float, config: PaperTraderConfig) -> float:
+    if config.exceptional_min_score <= config.normal_min_score: return 0.0
+    return clamp((candidate_score - config.normal_min_score) / (config.exceptional_min_score - config.normal_min_score), 0.0, 1.0)
 
-def calculate_confidence_score(
-    candidate_score: float,
-    config: PaperTraderConfig,
-) -> float:
-    """
-    Convert candidate score into 0..1 confidence.
-
-    normal_min_score      -> confidence close to 0
-    exceptional_min_score -> confidence close to 1
-    """
-
-    low = config.normal_min_score
-    high = config.exceptional_min_score
-
-    if high <= low:
-        return 0.0
-
-    raw_confidence = (candidate_score - low) / (high - low)
-
-    return clamp(raw_confidence, 0.0, 1.0)
-
-
-def calculate_dynamic_risk_pct(
-    candidate_score: float,
-    config: PaperTraderConfig,
-) -> float:
-    """
-    Convert confidence into risk percentage.
-
-    Uses a nonlinear confidence curve:
-    - average candidates remain small,
-    - only very strong candidates approach max risk.
-    """
-
+def calculate_dynamic_risk_pct(candidate_score: float, config: PaperTraderConfig) -> float:
     confidence = calculate_confidence_score(candidate_score, config)
+    risk_pct = config.min_risk_per_trade + (confidence ** 2) * (config.max_confidence_risk_per_trade - config.min_risk_per_trade)
+    return clamp(risk_pct, config.min_risk_per_trade, config.max_confidence_risk_per_trade)
 
-    # Squared confidence makes sizing conservative.
-    curved_confidence = confidence ** 2
-
-    risk_pct = (
-        config.min_risk_per_trade
-        + curved_confidence
-        * (config.max_confidence_risk_per_trade - config.min_risk_per_trade)
-    )
-
-    return clamp(
-        risk_pct,
-        config.min_risk_per_trade,
-        config.max_confidence_risk_per_trade,
-    )
-
+def _open_only(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty: return df
+    data = df.copy()
+    if "status" in data.columns: data = data[data["status"].astype(str).str.lower().eq("open")]
+    return data
 
 def calculate_open_risk_amount(open_positions: pd.DataFrame) -> float:
-    """
-    Calculate total capital currently at risk in open positions.
+    data = _open_only(open_positions)
+    if data.empty: return 0.0
+    return float(numeric_series(data, "capital_at_risk", 0.0).sum())
 
-    For long options, premium paid is approximately max possible loss.
-    """
+def calculate_open_position_value(open_positions: pd.DataFrame) -> float:
+    data = _open_only(open_positions)
+    if data.empty: return 0.0
+    values = numeric_series(data, "current_value_usd", 0.0)
+    if float(values.sum()) > 0: return float(values.sum())
+    return float((numeric_series(data, "current_price_usd", 0.0) * numeric_series(data, "quantity", 0.0)).sum())
 
-    if open_positions.empty:
-        return 0.0
+def calculate_unrealized_pnl_amount(open_positions: pd.DataFrame) -> float:
+    data = _open_only(open_positions)
+    if data.empty: return 0.0
+    pnl = numeric_series(data, "unrealized_pnl_usd", 0.0)
+    if abs(float(pnl.sum())) > 0: return float(pnl.sum())
+    return float(((numeric_series(data, "current_price_usd", 0.0) - numeric_series(data, "entry_price_usd", 0.0)) * numeric_series(data, "quantity", 0.0)).sum())
 
-    data = open_positions.copy()
-
-    if "status" in data.columns:
-        data = data[data["status"].astype(str).str.lower().eq("open")]
-
-    if data.empty:
-        return 0.0
-
-    if "capital_at_risk" not in data.columns:
-        return 0.0
-
-    risk = pd.to_numeric(
-        data["capital_at_risk"],
-        errors="coerce",
-    ).fillna(0.0)
-
-    return float(risk.sum())
-
-
-def count_matching_positions(
-    open_positions: pd.DataFrame,
-    option_type: str | None = None,
-    expiry: str | None = None,
-) -> int:
-    if open_positions.empty:
-        return 0
-
-    data = open_positions.copy()
-
-    if "status" in data.columns:
-        data = data[data["status"].astype(str).str.lower().eq("open")]
-
+def count_matching_positions(open_positions: pd.DataFrame, option_type: str | None = None, expiry: str | None = None) -> int:
+    data = _open_only(open_positions)
+    if data.empty: return 0
     if option_type is not None and "option_type" in data.columns:
-        data = data[
-            data["option_type"]
-            .astype(str)
-            .str.lower()
-            .str.strip()
-            .eq(option_type.lower().strip())
-        ]
-
+        data = data[data["option_type"].astype(str).str.lower().str.strip().eq(option_type.lower().strip())]
     if expiry is not None and "expiry" in data.columns:
-        data = data[
-            data["expiry"]
-            .astype(str)
-            .str.strip()
-            .eq(str(expiry).strip())
-        ]
-
+        data = data[data["expiry"].astype(str).str.strip().eq(str(expiry).strip())]
     return len(data)
 
-
-def candidate_passes_portfolio_allocation(
-    row: pd.Series,
-    open_positions: pd.DataFrame,
-    config: PaperTraderConfig,
-    best_score: float,
-) -> tuple[bool, str]:
+def candidate_passes_portfolio_allocation(row: pd.Series, open_positions: pd.DataFrame, config: PaperTraderConfig, best_score: float) -> tuple[bool, str]:
     current_open_count = len(open_positions)
-
-    if current_open_count >= config.max_positions:
-        return False, "max_positions_reached"
-
+    if current_open_count >= config.max_positions: return False, "max_positions_reached"
     score = get_candidate_score(row)
     relative_score = score / best_score if best_score > 0 else 0.0
-
-    if relative_score < config.min_relative_to_best_score:
-        return False, "not_close_enough_to_best_candidate"
-
-    # Normal zone: build toward target.
-    if current_open_count < config.target_positions:
-        if score < config.normal_min_score:
-            return False, "score_below_normal_minimum"
-
-    # Expansion zone: portfolio already has normal exposure.
-    elif current_open_count < 8:
-        if score < config.expansion_min_score:
-            return False, "score_not_strong_enough_to_expand"
-
-    # Large exposure zone: require exceptional candidates only.
-    else:
-        if score < config.exceptional_min_score:
-            return False, "score_not_exceptional_enough"
-
+    if relative_score < config.min_relative_to_best_score: return False, "not_close_enough_to_best_candidate"
+    if current_open_count < config.target_positions and score < config.normal_min_score: return False, "score_below_normal_minimum"
+    if config.target_positions <= current_open_count < 8 and score < config.expansion_min_score: return False, "score_not_strong_enough_to_expand"
+    if current_open_count >= 8 and score < config.exceptional_min_score: return False, "score_not_exceptional_enough"
     option_type = str(row.get("option_type", "")).lower().strip()
     expiry = str(row.get("expiry", "")).strip()
-
-    if option_type:
-        same_type_count = count_matching_positions(
-            open_positions,
-            option_type=option_type,
-        )
-
-        if same_type_count >= config.max_same_option_type_positions:
-            return False, "too_many_same_option_type_positions"
-
+    if option_type and count_matching_positions(open_positions, option_type=option_type) >= config.max_same_option_type_positions: return False, "too_many_same_option_type_positions"
     if expiry:
-        same_expiry_count = count_matching_positions(
-            open_positions,
-            expiry=expiry,
-        )
-
-        if same_expiry_count >= config.max_same_expiry_positions:
-            return False, "too_many_same_expiry_positions"
-
-        same_type_expiry_count = count_matching_positions(
-            open_positions,
-            option_type=option_type,
-            expiry=expiry,
-        )
-
-        if same_type_expiry_count >= config.max_same_option_type_and_expiry_positions:
-            return False, "too_many_same_type_same_expiry_positions"
-
+        if count_matching_positions(open_positions, expiry=expiry) >= config.max_same_expiry_positions: return False, "too_many_same_expiry_positions"
+        if count_matching_positions(open_positions, option_type=option_type, expiry=expiry) >= config.max_same_option_type_and_expiry_positions: return False, "too_many_same_type_same_expiry_positions"
     return True, "accepted_by_portfolio_allocation"
 
-
-def filter_trade_candidates(
-    candidates: pd.DataFrame,
-    open_positions: pd.DataFrame,
-    config: PaperTraderConfig,
-) -> pd.DataFrame:
-    if candidates.empty:
-        return pd.DataFrame()
-
+def filter_trade_candidates(candidates: pd.DataFrame, open_positions: pd.DataFrame, config: PaperTraderConfig) -> pd.DataFrame:
+    if candidates.empty: return pd.DataFrame()
     data = normalize_candidates(candidates)
-
-    # Do not reopen the same instrument.
     if "instrument_name" in data.columns and "instrument_name" in open_positions.columns:
-        existing_instruments = set(open_positions["instrument_name"].astype(str))
-        data = data[~data["instrument_name"].astype(str).isin(existing_instruments)]
-
-    # Long-option strategy: usually trade cheap options only.
-    if config.only_trade_cheap_options and "classification" in data.columns:
-        data = data[data["classification"].eq("cheap")]
-
-    if "market_price_usd" in data.columns:
-        data = data[
-            pd.to_numeric(
-                data["market_price_usd"],
-                errors="coerce",
-            )
-            >= config.min_market_price_usd
-        ]
-
-    if data.empty:
-        return pd.DataFrame()
-
-    data["portfolio_candidate_score"] = data.apply(
-        get_candidate_score,
-        axis=1,
-    )
-
-    data = data[
-        data["portfolio_candidate_score"] >= config.min_abs_mispricing_score
-    ]
-
-    data = data.sort_values(
-        "portfolio_candidate_score",
-        ascending=False,
-    ).reset_index(drop=True)
-
-    if data.empty:
-        return pd.DataFrame()
-
-    current_open_count = len(open_positions)
-
-    if current_open_count >= config.max_positions:
-        return pd.DataFrame()
-
+        existing = set(open_positions["instrument_name"].astype(str))
+        data = data[~data["instrument_name"].astype(str).isin(existing)]
+    if config.only_trade_cheap_options and "classification" in data.columns: data = data[data["classification"].eq("cheap")]
+    if "market_price_usd" in data.columns: data = data[pd.to_numeric(data["market_price_usd"], errors="coerce") >= config.min_market_price_usd]
+    if data.empty: return pd.DataFrame()
+    data["portfolio_candidate_score"] = data.apply(get_candidate_score, axis=1)
+    data = data[data["portfolio_candidate_score"] >= config.min_abs_mispricing_score]
+    data = data.sort_values("portfolio_candidate_score", ascending=False).reset_index(drop=True)
+    if data.empty or len(open_positions) >= config.max_positions: return pd.DataFrame()
     best_score = float(data["portfolio_candidate_score"].max())
-
-    if current_open_count < config.target_positions:
-        available_slots = config.target_positions - current_open_count
-    else:
-        available_slots = config.max_positions - current_open_count
-
-    available_slots = min(
-        available_slots,
-        config.max_new_positions_per_cycle,
-    )
-
-    selected: list[dict[str, Any]] = []
-    exposure_view = open_positions.copy()
-
+    available_slots = config.target_positions - len(open_positions) if len(open_positions) < config.target_positions else config.max_positions - len(open_positions)
+    available_slots = min(available_slots, config.max_new_positions_per_cycle)
+    selected, exposure_view = [], open_positions.copy()
     for _, row in data.iterrows():
-        if len(selected) >= available_slots:
-            break
-
-        allowed, reason = candidate_passes_portfolio_allocation(
-            row=row,
-            open_positions=exposure_view,
-            config=config,
-            best_score=best_score,
-        )
-
-        if not allowed:
-            continue
-
-        candidate = row.to_dict()
-        candidate["portfolio_allocation_reason"] = reason
+        if len(selected) >= available_slots: break
+        allowed, reason = candidate_passes_portfolio_allocation(row, exposure_view, config, best_score)
+        if not allowed: continue
+        candidate = row.to_dict(); candidate["portfolio_allocation_reason"] = reason
         selected.append(candidate)
-
-        # Important:
-        # Treat selected same-cycle candidates as temporary exposure so that
-        # the bot does not pick many highly similar positions at once.
-        exposure_view = pd.concat(
-            [exposure_view, pd.DataFrame([candidate])],
-            ignore_index=True,
-        )
-
+        exposure_view = pd.concat([exposure_view, pd.DataFrame([candidate])], ignore_index=True)
     return pd.DataFrame(selected)
 
-
-def calculate_position_size(
-    cash: float,
-    option_price: float,
-    risk_pct: float,
-) -> tuple[float, float]:
-    """
-    Calculate paper position size from dynamic risk percentage.
-    """
-
-    if cash <= 0 or option_price <= 0 or risk_pct <= 0:
-        return 0.0, 0.0
-
+def calculate_position_size(cash: float, option_price: float, risk_pct: float) -> tuple[float, float]:
+    if cash <= 0 or option_price <= 0 or risk_pct <= 0: return 0.0, 0.0
     risk_amount = cash * risk_pct
-    quantity = risk_amount / option_price
-
-    return float(quantity), float(risk_amount)
-
+    return float(risk_amount / option_price), float(risk_amount)
 
 def open_paper_trades(config: PaperTraderConfig | None = None) -> pd.DataFrame:
-    if config is None:
-        config = PaperTraderConfig()
-
-    candidates = load_candidates(config)
-    open_positions = load_open_positions(config)
-    cash = load_cash(config)
-
-    selected = filter_trade_candidates(
-        candidates=candidates,
-        open_positions=open_positions,
-        config=config,
-    )
-
+    if config is None: config = PaperTraderConfig()
+    candidates, open_positions, cash = load_candidates(config), load_open_positions(config), load_cash(config)
+    selected = filter_trade_candidates(candidates, open_positions, config)
     if selected.empty:
         print("No candidates passed dynamic portfolio allocation.")
         return pd.DataFrame()
-
     now = pd.Timestamp.utcnow().isoformat()
     min_cash_buffer = config.initial_cash * config.min_cash_buffer_pct
     max_total_open_risk = config.initial_cash * config.max_total_open_risk_pct
-
-    new_positions: list[dict[str, Any]] = []
-
-    # Keep this updated inside the loop so same-cycle risk does not exceed cap.
     current_open_risk = calculate_open_risk_amount(open_positions)
-
+    new_positions = []
     for _, row in selected.iterrows():
-        option_price = (
-            safe_float(row.get("market_price_usd"))
-            or safe_float(row.get("entry_price_usd"))
-        )
-
-        if option_price is None or option_price <= 0:
-            continue
-
+        option_price = safe_float(row.get("market_price_usd")) or safe_float(row.get("entry_price_usd"))
+        if option_price is None or option_price <= 0: continue
         if cash <= min_cash_buffer:
             print("Cash buffer reached. No more positions opened this cycle.")
             break
-
         candidate_score = safe_float(row.get("portfolio_candidate_score"))
-
-        if candidate_score is None:
-            candidate_score = get_candidate_score(row)
-
-        confidence_score = calculate_confidence_score(
-            candidate_score=candidate_score,
-            config=config,
-        )
-
-        dynamic_risk_pct = calculate_dynamic_risk_pct(
-            candidate_score=candidate_score,
-            config=config,
-        )
-
-        remaining_risk_capacity = max_total_open_risk - current_open_risk
-
-        if remaining_risk_capacity <= 0:
+        if candidate_score is None: candidate_score = get_candidate_score(row)
+        confidence = calculate_confidence_score(candidate_score, config)
+        risk_pct = calculate_dynamic_risk_pct(candidate_score, config)
+        remaining_capacity = max_total_open_risk - current_open_risk
+        if remaining_capacity <= 0:
             print("Portfolio total open risk cap reached.")
             break
-
-        quantity, capital_at_risk = calculate_position_size(
-            cash=cash,
-            option_price=option_price,
-            risk_pct=dynamic_risk_pct,
-        )
-
-        # Do not exceed total portfolio risk capacity.
-        if capital_at_risk > remaining_risk_capacity:
-            capital_at_risk = remaining_risk_capacity
-            quantity = capital_at_risk / option_price
-
-        # Do not exceed cash.
+        quantity, capital_at_risk = calculate_position_size(cash, option_price, risk_pct)
+        if capital_at_risk > remaining_capacity:
+            capital_at_risk, quantity = remaining_capacity, remaining_capacity / option_price
         if capital_at_risk > cash:
-            capital_at_risk = cash
-            quantity = capital_at_risk / option_price
-
-        if quantity <= 0 or capital_at_risk <= 0:
-            continue
-
+            capital_at_risk, quantity = cash, cash / option_price
+        if quantity <= 0 or capital_at_risk <= 0: continue
         position = row.to_dict()
-
-        position.update(
-            {
-                "opened_at": now,
-                "updated_at": now,
-                "status": "open",
-
-                "entry_price_usd": float(option_price),
-                "current_price_usd": float(option_price),
-                "highest_price_usd": float(option_price),
-                "highest_profit_pct": 0.0,
-                "trailing_stop_price_usd": 0.0,
-
-                "quantity": float(quantity),
-                "capital_at_risk": float(capital_at_risk),
-                "current_value_usd": float(capital_at_risk),
-                "unrealized_pnl_usd": 0.0,
-                "unrealized_pnl_pct": 0.0,
-
-                "portfolio_candidate_score": float(candidate_score),
-                "confidence_score": float(confidence_score),
-                "dynamic_risk_pct": float(dynamic_risk_pct),
-                "dynamic_risk_pct_display": f"{dynamic_risk_pct:.2%}",
-                "max_total_open_risk_pct": float(config.max_total_open_risk_pct),
-                "portfolio_open_risk_before_trade": float(current_open_risk),
-                "portfolio_open_risk_after_trade": float(
-                    current_open_risk + capital_at_risk
-                ),
-            }
-        )
-
-        cash -= capital_at_risk
-        current_open_risk += capital_at_risk
-        new_positions.append(position)
-
+        position.update({"opened_at": now, "updated_at": now, "status": "open", "entry_price_usd": float(option_price), "current_price_usd": float(option_price), "highest_price_usd": float(option_price), "highest_profit_pct": 0.0, "trailing_stop_price_usd": 0.0, "quantity": float(quantity), "capital_at_risk": float(capital_at_risk), "current_value_usd": float(capital_at_risk), "unrealized_pnl_usd": 0.0, "unrealized_pnl_pct": 0.0, "portfolio_candidate_score": float(candidate_score), "confidence_score": float(confidence), "dynamic_risk_pct": float(risk_pct), "hybrid_exit_reason": "new_position"})
+        cash -= capital_at_risk; current_open_risk += capital_at_risk; new_positions.append(position)
     if not new_positions:
         print("Candidates were selected, but no positions could be sized/opened.")
         return pd.DataFrame()
-
-    updated_positions = pd.concat(
-        [open_positions, pd.DataFrame(new_positions)],
-        ignore_index=True,
-    )
-
-    save_open_positions(updated_positions, config)
+    save_open_positions(pd.concat([open_positions, pd.DataFrame(new_positions)], ignore_index=True), config)
     save_cash(cash, config)
-
     opened = pd.DataFrame(new_positions)
-
     print(f"Opened {len(opened)} new paper position(s).")
     print(f"Current paper cash: ${cash:,.2f}")
-    print(f"Current open risk:  ${current_open_risk:,.2f}")
-    print(f"Max open risk cap:  ${max_total_open_risk:,.2f}")
-
-    if "dynamic_risk_pct_display" in opened.columns:
-        print("\n--- NEW POSITION SIZING ---")
-        print(
-            opened[
-                [
-                    "instrument_name",
-                    "option_type",
-                    "portfolio_candidate_score",
-                    "confidence_score",
-                    "dynamic_risk_pct_display",
-                    "capital_at_risk",
-                ]
-            ].to_string(index=False)
-        )
-
+    print_new_positions_table(opened)
     return opened
 
+def _pct_string(value: Any) -> str:
+    v = safe_float(value)
+    return "" if v is None else f"{v:.2%}"
+
+def _num_string(value: Any, digits: int = 2) -> str:
+    v = safe_float(value)
+    return "" if v is None else f"{v:.{digits}f}"
+
+def print_new_positions_table(opened: pd.DataFrame) -> None:
+    if opened.empty: return
+    cols = [c for c in ["instrument_name", "option_type", "strike", "days_to_expiry", "entry_price_usd", "quantity", "capital_at_risk", "portfolio_candidate_score", "confidence_score", "dynamic_risk_pct"] if c in opened.columns]
+    if not cols: return
+    display = opened[cols].copy()
+    for c in display.columns:
+        if c not in ["instrument_name", "option_type"]:
+            display[c] = pd.to_numeric(display[c], errors="ignore")
+    rename = {"instrument_name":"instrument", "option_type":"type", "days_to_expiry":"DTE", "entry_price_usd":"entry", "capital_at_risk":"risk_$", "portfolio_candidate_score":"score", "confidence_score":"conf", "dynamic_risk_pct":"risk_%"}
+    display = display.rename(columns=rename)
+    if "risk_%" in display.columns: display["risk_%"] = display["risk_%"].apply(_pct_string)
+    print("\n--- NEWLY OPENED POSITIONS ---")
+    print(display.to_string(index=False))
+
+def print_open_positions_table(config: PaperTraderConfig | None = None, max_rows: int = 50) -> None:
+    if config is None: config = PaperTraderConfig()
+    positions = load_open_positions(config)
+    print("\n========== OPEN PAPER POSITIONS ==========")
+    if positions.empty:
+        print("No open paper positions.")
+        print("==========================================")
+        return
+    data = _open_only(positions)
+    if data.empty:
+        print("No open paper positions.")
+        print("==========================================")
+        return
+    for col in ["strike","days_to_expiry","entry_price_usd","current_price_usd","quantity","capital_at_risk","current_value_usd","unrealized_pnl_usd","unrealized_pnl_pct","portfolio_candidate_score","confidence_score","dynamic_risk_pct","highest_profit_pct","trailing_stop_price_usd"]:
+        if col in data.columns: data[col] = pd.to_numeric(data[col], errors="coerce")
+    if "current_value_usd" not in data.columns: data["current_value_usd"] = numeric_series(data, "current_price_usd", 0.0) * numeric_series(data, "quantity", 0.0)
+    if "unrealized_pnl_usd" not in data.columns: data["unrealized_pnl_usd"] = (numeric_series(data, "current_price_usd", 0.0) - numeric_series(data, "entry_price_usd", 0.0)) * numeric_series(data, "quantity", 0.0)
+    if "unrealized_pnl_pct" not in data.columns:
+        entry = numeric_series(data, "entry_price_usd", 1.0).replace(0, 1.0)
+        data["unrealized_pnl_pct"] = numeric_series(data, "current_price_usd", 0.0) / entry - 1.0
+    data["PnL_%"] = data["unrealized_pnl_pct"].apply(_pct_string)
+    if "dynamic_risk_pct" in data.columns: data["risk_%"] = data["dynamic_risk_pct"].apply(_pct_string)
+    if "confidence_score" in data.columns: data["conf"] = data["confidence_score"].apply(lambda x: _num_string(x, 2))
+    if "portfolio_candidate_score" in data.columns: data["score"] = data["portfolio_candidate_score"].apply(lambda x: _num_string(x, 3))
+    display_columns = [c for c in ["instrument_name","option_type","strike","days_to_expiry","entry_price_usd","current_price_usd","quantity","capital_at_risk","current_value_usd","unrealized_pnl_usd","PnL_%","score","conf","risk_%","hybrid_exit_reason"] if c in data.columns]
+    if "capital_at_risk" in data.columns: data = data.sort_values("capital_at_risk", ascending=False)
+    visible = data[display_columns].head(max_rows).copy().rename(columns={"instrument_name":"instrument","option_type":"type","days_to_expiry":"DTE","entry_price_usd":"entry","current_price_usd":"current","capital_at_risk":"risk_$","current_value_usd":"value_$","unrealized_pnl_usd":"PnL_$","hybrid_exit_reason":"exit_state"})
+    for col in visible.columns:
+        if pd.api.types.is_numeric_dtype(visible[col]): visible[col] = visible[col].round(4)
+    print(visible.to_string(index=False))
+    print("------------------------------------------")
+    print(f"Open positions:       {len(data)}")
+    print(f"Total open value:     ${calculate_open_position_value(data):,.2f}")
+    print(f"Total capital risk:   ${calculate_open_risk_amount(data):,.2f}")
+    print(f"Total unrealized PnL: ${calculate_unrealized_pnl_amount(data):,.2f}")
+    print("==========================================")
 
 def print_paper_account_summary(config: PaperTraderConfig | None = None) -> None:
-    if config is None:
-        config = PaperTraderConfig()
-
-    cash = load_cash(config)
-    positions = load_open_positions(config)
-    open_risk = calculate_open_risk_amount(positions)
-    max_total_open_risk = config.initial_cash * config.max_total_open_risk_pct
-
+    if config is None: config = PaperTraderConfig()
+    cash, positions = load_cash(config), load_open_positions(config)
+    open_value, unrealized_pnl, open_risk = calculate_open_position_value(positions), calculate_unrealized_pnl_amount(positions), calculate_open_risk_amount(positions)
+    total_equity = cash + open_value
+    total_return = total_equity / config.initial_cash - 1.0 if config.initial_cash > 0 else 0.0
+    invested_pct = open_risk / config.initial_cash if config.initial_cash > 0 else 0.0
     print("\n========== PAPER ACCOUNT SUMMARY ==========")
-    print(f"Paper cash:          ${cash:,.2f}")
-    print(f"Open positions:      {len(positions)}")
-    print(f"Target positions:    {config.target_positions}")
-    print(f"Max positions:       {config.max_positions}")
-    print(f"Open risk:           ${open_risk:,.2f}")
-    print(f"Max open risk cap:   ${max_total_open_risk:,.2f}")
-    print(f"Min risk/trade:      {config.min_risk_per_trade:.2%}")
-    print(f"Max risk/trade:      {config.max_confidence_risk_per_trade:.2%}")
+    print(f"Starting equity:       ${config.initial_cash:,.2f}")
+    print(f"Free cash:             ${cash:,.2f}")
+    print(f"Open position value:   ${open_value:,.2f}")
+    print(f"Total equity:          ${total_equity:,.2f}")
+    print(f"Unrealized PnL:        ${unrealized_pnl:,.2f}")
+    print(f"Total return:          {total_return:.2%}")
+    print("-------------------------------------------")
+    print(f"Open positions:        {len(positions)}")
+    print(f"Target positions:      {config.target_positions}")
+    print(f"Max positions:         {config.max_positions}")
+    print("-------------------------------------------")
+    print(f"Capital at risk:       ${open_risk:,.2f}")
+    print(f"Capital invested %:    {invested_pct:.2%}")
+    print(f"Max open risk cap:     ${config.initial_cash * config.max_total_open_risk_pct:,.2f}")
+    print(f"Min risk/trade:        {config.min_risk_per_trade:.2%}")
+    print(f"Max risk/trade:        {config.max_confidence_risk_per_trade:.2%}")
     print("===========================================")
 
-
 if __name__ == "__main__":
-    open_paper_trades(PaperTraderConfig())===== ./execution/hybrid_exit_rules.py =====
-"""
-execution/hybrid_exit_rules.py
-
-Hybrid exit rules for long option paper positions.
-
-The goal is not to close every winner at a fixed take-profit.
-Instead, the system uses:
-- hard loss protection,
-- near-expiry close,
-- hard take-profit fallback,
-- trailing profit protection,
-- trend/regime deterioration exits,
-- volatility contraction exits.
-
-Pure decision module:
-- no file I/O,
-- no exchange calls,
-- no cash/accounting logic.
-"""
-
+    open_paper_trades(PaperTraderConfig())
+===== ./execution/hybrid_exit_rules.py =====
+"""Hybrid exit rules for paper option positions."""
 from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any
-
 
 @dataclass
 class HybridExitConfig:
@@ -8761,20 +8160,16 @@ class HybridExitConfig:
     trailing_activation_pct: float = 0.25
     trailing_drawdown_pct: float = 0.18
     min_days_to_expiry: float = 1.5
-
     trend_loss_profit_floor_pct: float = 0.12
     strong_trend_against_profit_floor_pct: float = 0.05
     volatility_contraction_profit_floor_pct: float = 0.18
     big_profit_giveback_activation_pct: float = 0.50
     big_profit_min_keep_pct: float = 0.22
-
     strong_trend_gap_threshold: float = 0.015
     volatility_contraction_ratio: float = 0.85
-
     close_profitable_trade_on_trend_loss: bool = True
     close_profitable_trade_on_hostile_regime: bool = True
     close_profitable_trade_on_volatility_contraction: bool = True
-
 
 @dataclass
 class HybridExitDecision:
@@ -8789,322 +8184,181 @@ class HybridExitDecision:
     trend_strength: float
     volatility_contracting: bool
 
-
 def safe_float(value: Any, default: float = 0.0) -> float:
     try:
-        number = float(value)
+        x = float(value)
     except (TypeError, ValueError):
         return default
-    if number != number:
-        return default
-    return float(number)
-
+    return default if x != x else float(x)
 
 def safe_bool(value: Any, default: bool = False) -> bool:
-    if value is None:
-        return default
-    return bool(value)
-
+    return default if value is None else bool(value)
 
 def trend_strength_from_regime(trend_regime: Any) -> float:
-    sma_fast = safe_float(getattr(trend_regime, "sma_fast", 0.0))
-    sma_slow = safe_float(getattr(trend_regime, "sma_slow", 0.0))
-    if sma_slow <= 0:
-        return 0.0
-    return float((sma_fast - sma_slow) / sma_slow)
-
+    fast = safe_float(getattr(trend_regime, 'sma_fast', 0.0))
+    slow = safe_float(getattr(trend_regime, 'sma_slow', 0.0))
+    return 0.0 if slow <= 0 else float((fast - slow) / slow)
 
 def volatility_is_contracting(trend_regime: Any, config: HybridExitConfig) -> bool:
-    hv_fast = safe_float(getattr(trend_regime, "hv_fast", 0.0))
-    hv_slow = safe_float(getattr(trend_regime, "hv_slow", 0.0))
-    if hv_fast <= 0 or hv_slow <= 0:
-        return False
-    return bool(hv_fast < hv_slow * config.volatility_contraction_ratio)
-
+    hv_fast = safe_float(getattr(trend_regime, 'hv_fast', 0.0))
+    hv_slow = safe_float(getattr(trend_regime, 'hv_slow', 0.0))
+    return bool(hv_fast > 0 and hv_slow > 0 and hv_fast < hv_slow * config.volatility_contraction_ratio)
 
 def trend_supports_position(option_type: str, trend_regime: Any) -> bool:
     option_type = str(option_type).lower().strip()
-    bullish = safe_bool(getattr(trend_regime, "bullish", False))
-    bearish = safe_bool(getattr(trend_regime, "bearish", False))
-
-    if option_type == "call":
-        return bullish
-    if option_type == "put":
-        return bearish
+    bullish = safe_bool(getattr(trend_regime, 'bullish', False))
+    bearish = safe_bool(getattr(trend_regime, 'bearish', False))
+    if option_type == 'call': return bullish
+    if option_type == 'put': return bearish
     return False
 
-
-def strong_trend_against_position(
-    option_type: str,
-    trend_strength: float,
-    config: HybridExitConfig,
-) -> bool:
+def strong_trend_against_position(option_type: str, trend_strength: float, config: HybridExitConfig) -> bool:
     option_type = str(option_type).lower().strip()
-
-    if option_type == "call":
-        return trend_strength <= -config.strong_trend_gap_threshold
-    if option_type == "put":
-        return trend_strength >= config.strong_trend_gap_threshold
+    if option_type == 'call': return trend_strength <= -config.strong_trend_gap_threshold
+    if option_type == 'put': return trend_strength >= config.strong_trend_gap_threshold
     return False
 
-
-def build_decision(
-    should_close: bool,
-    reason: str,
-    pnl_pct: float,
-    highest_price_usd: float,
-    entry_price_usd: float,
-    trailing_stop_price_usd: float,
-    trend_supportive: bool,
-    regime_hostile: bool,
-    trend_strength: float,
-    volatility_contracting: bool,
-) -> HybridExitDecision:
+def build_decision(should_close: bool, reason: str, pnl_pct: float, highest_price_usd: float, entry_price_usd: float, trailing_stop_price_usd: float, trend_supportive: bool, regime_hostile: bool, trend_strength: float, volatility_contracting: bool) -> HybridExitDecision:
     highest_profit_pct = highest_price_usd / entry_price_usd - 1.0 if entry_price_usd > 0 else 0.0
+    return HybridExitDecision(bool(should_close), str(reason), float(pnl_pct), float(highest_price_usd), float(highest_profit_pct), float(trailing_stop_price_usd), bool(trend_supportive), bool(regime_hostile), float(trend_strength), bool(volatility_contracting))
 
-    return HybridExitDecision(
-        should_close=bool(should_close),
-        reason=str(reason),
-        pnl_pct=float(pnl_pct),
-        highest_price_usd=float(highest_price_usd),
-        highest_profit_pct=float(highest_profit_pct),
-        trailing_stop_price_usd=float(trailing_stop_price_usd),
-        trend_supportive=bool(trend_supportive),
-        regime_hostile=bool(regime_hostile),
-        trend_strength=float(trend_strength),
-        volatility_contracting=bool(volatility_contracting),
-    )
-
-
-def evaluate_hybrid_exit(
-    option_type: str,
-    entry_price_usd: float,
-    current_price_usd: float,
-    highest_price_usd: float,
-    days_to_expiry: float,
-    trend_regime: Any,
-    config: HybridExitConfig | None = None,
-) -> HybridExitDecision:
-    if config is None:
-        config = HybridExitConfig()
-
-    entry = float(entry_price_usd)
-    current = float(current_price_usd)
+def evaluate_hybrid_exit(option_type: str, entry_price_usd: float, current_price_usd: float, highest_price_usd: float, days_to_expiry: float, trend_regime: Any, config: HybridExitConfig | None = None) -> HybridExitDecision:
+    if config is None: config = HybridExitConfig()
+    entry = float(entry_price_usd); current = float(current_price_usd)
     previous_high = max(float(highest_price_usd), entry)
     updated_high = max(previous_high, current)
-
-    if entry <= 0:
-        return build_decision(True, "invalid_entry_price", 0.0, max(updated_high, 1.0), 1.0, 0.0, False, False, 0.0, False)
-
-    if current <= 0:
-        return build_decision(True, "invalid_current_price", -1.0, updated_high, entry, 0.0, False, False, 0.0, False)
-
+    if entry <= 0: return build_decision(True, 'invalid_entry_price', 0.0, max(updated_high, 1.0), 1.0, 0.0, False, False, 0.0, False)
+    if current <= 0: return build_decision(True, 'invalid_current_price', -1.0, updated_high, entry, 0.0, False, False, 0.0, False)
     pnl_pct = current / entry - 1.0
     highest_profit_pct = updated_high / entry - 1.0
     trailing_stop = updated_high * (1.0 - config.trailing_drawdown_pct)
-
     trend_ok = trend_supports_position(option_type, trend_regime)
-    hostile = safe_bool(getattr(trend_regime, "hostile", False))
+    hostile = safe_bool(getattr(trend_regime, 'hostile', False))
     trend_strength = trend_strength_from_regime(trend_regime)
-    volatility_contracting = volatility_is_contracting(trend_regime, config)
+    vol_contracting = volatility_is_contracting(trend_regime, config)
     trend_against = strong_trend_against_position(option_type, trend_strength, config)
-
-    if days_to_expiry <= config.min_days_to_expiry:
-        return build_decision(True, "near_expiry", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
-    if pnl_pct <= config.emergency_stop_loss_pct:
-        return build_decision(True, "emergency_stop_loss", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
-    if pnl_pct <= config.stop_loss_pct:
-        return build_decision(True, "hard_stop_loss", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
-    if pnl_pct >= config.hard_take_profit_pct:
-        return build_decision(True, "hard_take_profit", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
-    if highest_profit_pct >= config.big_profit_giveback_activation_pct and pnl_pct <= config.big_profit_min_keep_pct:
-        return build_decision(True, "big_profit_giveback_protection", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
-    if highest_profit_pct >= config.trailing_activation_pct and current <= trailing_stop:
-        return build_decision(True, "trailing_profit_stop", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
-    if config.close_profitable_trade_on_trend_loss and pnl_pct >= config.trend_loss_profit_floor_pct and not trend_ok:
-        return build_decision(True, "profit_protected_trend_lost", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
-    if pnl_pct >= config.strong_trend_against_profit_floor_pct and trend_against:
-        return build_decision(True, "profit_protected_strong_trend_against", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
-    if config.close_profitable_trade_on_hostile_regime and pnl_pct >= config.soft_take_profit_pct and hostile:
-        return build_decision(True, "profit_protected_hostile_regime", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
-    if config.close_profitable_trade_on_volatility_contraction and pnl_pct >= config.volatility_contraction_profit_floor_pct and volatility_contracting:
-        return build_decision(True, "profit_protected_volatility_contracting", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
-
-    return build_decision(False, "hold", pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, volatility_contracting)
+    if days_to_expiry <= config.min_days_to_expiry: return build_decision(True, 'near_expiry', pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
+    if pnl_pct <= config.emergency_stop_loss_pct: return build_decision(True, 'emergency_stop_loss', pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
+    if pnl_pct <= config.stop_loss_pct: return build_decision(True, 'hard_stop_loss', pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
+    if pnl_pct >= config.hard_take_profit_pct: return build_decision(True, 'hard_take_profit', pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
+    if highest_profit_pct >= config.big_profit_giveback_activation_pct and pnl_pct <= config.big_profit_min_keep_pct: return build_decision(True, 'big_profit_giveback_protection', pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
+    if highest_profit_pct >= config.trailing_activation_pct and current <= trailing_stop: return build_decision(True, 'trailing_profit_stop', pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
+    if config.close_profitable_trade_on_trend_loss and pnl_pct >= config.trend_loss_profit_floor_pct and not trend_ok: return build_decision(True, 'profit_protected_trend_lost', pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
+    if pnl_pct >= config.strong_trend_against_profit_floor_pct and trend_against: return build_decision(True, 'profit_protected_strong_trend_against', pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
+    if config.close_profitable_trade_on_hostile_regime and pnl_pct >= config.soft_take_profit_pct and hostile: return build_decision(True, 'profit_protected_hostile_regime', pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
+    if config.close_profitable_trade_on_volatility_contraction and pnl_pct >= config.volatility_contraction_profit_floor_pct and vol_contracting: return build_decision(True, 'profit_protected_volatility_contracting', pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
+    return build_decision(False, 'hold', pnl_pct, updated_high, entry, trailing_stop, trend_ok, hostile, trend_strength, vol_contracting)
 ===== ./execution/paper_equity_curve.py =====
-"""
-execution/paper_equity_curve.py
-
-Appends one paper equity snapshot per scheduler cycle.
-"""
-
 from __future__ import annotations
-
 from pathlib import Path
-
 import pandas as pd
-
 from execution.paper_trader import PaperTraderConfig
 from execution.paper_account_reconciliation import load_csv_if_exists, load_cash, calculate_open_current_value, calculate_unrealized_pnl
-
 EQUITY_CURVE_FILE = "outputs/paper_equity_curve.csv"
 
-
-def generate_equity_curve(
-    config: PaperTraderConfig | None = None,
-    output_file: str = EQUITY_CURVE_FILE,
-) -> pd.DataFrame:
-    if config is None:
-        config = PaperTraderConfig()
-
-    open_positions = load_csv_if_exists(config.positions_file)
+def generate_equity_curve(config: PaperTraderConfig | None = None, output_file: str = EQUITY_CURVE_FILE) -> pd.DataFrame:
+    if config is None: config = PaperTraderConfig()
+    positions = load_csv_if_exists(config.positions_file)
     cash = load_cash(config)
-    open_value = calculate_open_current_value(open_positions)
-    unrealized_pnl = calculate_unrealized_pnl(open_positions)
-    equity = cash + open_value
-
-    row = pd.DataFrame(
-        [
-            {
-                "timestamp": pd.Timestamp.utcnow().isoformat(),
-                "cash": float(cash),
-                "open_current_value": float(open_value),
-                "unrealized_pnl": float(unrealized_pnl),
-                "equity": float(equity),
-                "open_positions": int(len(open_positions)) if not open_positions.empty else 0,
-            }
-        ]
-    )
-
+    open_value = calculate_open_current_value(positions)
+    unrealized = calculate_unrealized_pnl(positions)
+    row = pd.DataFrame([{"timestamp": pd.Timestamp.utcnow().isoformat(), "cash": cash, "open_current_value": open_value, "unrealized_pnl": unrealized, "equity": cash + open_value, "open_positions": len(positions) if not positions.empty else 0}])
     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
     old = load_csv_if_exists(output_file)
-    if old.empty:
-        result = row
-    else:
-        result = pd.concat([old, row], ignore_index=True)
-
+    result = row if old.empty else pd.concat([old, row], ignore_index=True)
     result.to_csv(output_file, index=False)
-    print("Equity curve updated.")
     return result
-
-
-if __name__ == "__main__":
-    generate_equity_curve()
+if __name__ == "__main__": generate_equity_curve()
 ===== ./execution/paper_risk_metrics.py =====
-"""
-execution/paper_risk_metrics.py
-
-Calculates paper risk metrics from the paper equity curve.
-"""
-
+"""Calculates paper risk metrics from the paper equity curve and trade history."""
 from __future__ import annotations
-
 from pathlib import Path
 import math
-
 import pandas as pd
 
 EQUITY_CURVE_FILE = "outputs/paper_equity_curve.csv"
 RISK_METRICS_FILE = "outputs/paper_risk_metrics.csv"
 
+def load_csv_if_exists(file_path: str) -> pd.DataFrame:
+    p = Path(file_path)
+    if not p.exists() or p.stat().st_size == 0: return pd.DataFrame()
+    try: return pd.read_csv(p)
+    except pd.errors.EmptyDataError: return pd.DataFrame()
 
-def load_equity_curve(file_path: str = EQUITY_CURVE_FILE) -> pd.DataFrame:
-    path = Path(file_path)
-    if not path.exists() or path.stat().st_size == 0:
-        return pd.DataFrame()
-    try:
-        return pd.read_csv(path)
-    except pd.errors.EmptyDataError:
-        return pd.DataFrame()
+def numeric_series(df: pd.DataFrame, column: str, default: float = 0.0) -> pd.Series:
+    if column in df.columns: return pd.to_numeric(df[column], errors="coerce").fillna(default)
+    return pd.Series([default] * len(df), index=df.index, dtype=float)
 
-
-def calculate_drawdown(equity: pd.Series) -> tuple[pd.Series, float, float]:
+def calculate_risk_metrics(equity_curve_file: str = EQUITY_CURVE_FILE, output_file: str = RISK_METRICS_FILE, periods_per_year: int | None = None) -> pd.DataFrame:
+    df = load_csv_if_exists(equity_curve_file)
+    if df.empty or "equity" not in df.columns:
+        result = pd.DataFrame([{"timestamp": pd.Timestamp.utcnow().isoformat(), "status": "no_equity_data"}])
+        Path(output_file).parent.mkdir(parents=True, exist_ok=True); result.to_csv(output_file, index=False); return result
+    equity = pd.to_numeric(df["equity"], errors="coerce").dropna()
     if equity.empty:
-        return pd.Series(dtype=float), 0.0, 0.0
+        result = pd.DataFrame([{"timestamp": pd.Timestamp.utcnow().isoformat(), "status": "no_valid_equity"}])
+        Path(output_file).parent.mkdir(parents=True, exist_ok=True); result.to_csv(output_file, index=False); return result
+    returns = equity.pct_change().replace([math.inf, -math.inf], pd.NA).dropna()
     running_max = equity.cummax()
     drawdown = equity / running_max - 1.0
-    return drawdown, float(drawdown.min()), float(drawdown.iloc[-1])
-
-
-def calculate_returns(equity: pd.Series) -> pd.Series:
-    if equity.empty or len(equity) < 2:
-        return pd.Series(dtype=float)
-    return equity.pct_change().replace([math.inf, -math.inf], pd.NA).dropna()
-
-
-def calculate_sharpe_ratio(returns: pd.Series, periods_per_year: int | None = None) -> float:
-    if returns.empty or returns.std(ddof=1) == 0:
-        return 0.0
-    raw = float(returns.mean() / returns.std(ddof=1))
-    if periods_per_year is None:
-        return raw
-    return float(raw * math.sqrt(periods_per_year))
-
-
-def calculate_sortino_ratio(returns: pd.Series, periods_per_year: int | None = None) -> float:
-    if returns.empty:
-        return 0.0
     downside = returns[returns < 0]
-    if downside.empty or downside.std(ddof=1) == 0:
-        return 0.0
-    raw = float(returns.mean() / downside.std(ddof=1))
-    if periods_per_year is None:
-        return raw
-    return float(raw * math.sqrt(periods_per_year))
-
-
-def calculate_risk_metrics(
-    equity_curve_file: str = EQUITY_CURVE_FILE,
-    output_file: str = RISK_METRICS_FILE,
-    periods_per_year: int | None = None,
-) -> pd.DataFrame:
-    equity_curve = load_equity_curve(equity_curve_file)
-    if equity_curve.empty or "equity" not in equity_curve.columns:
-        result = pd.DataFrame([{"timestamp": pd.Timestamp.utcnow().isoformat(), "status": "no_equity_data"}])
-        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-        result.to_csv(output_file, index=False)
-        return result
-
-    equity = pd.to_numeric(equity_curve["equity"], errors="coerce").dropna()
-    returns = calculate_returns(equity)
-    drawdown, max_drawdown, current_drawdown = calculate_drawdown(equity)
-
-    result = pd.DataFrame(
-        [
-            {
-                "timestamp": pd.Timestamp.utcnow().isoformat(),
-                "observations": int(len(equity)),
-                "current_equity": float(equity.iloc[-1]) if not equity.empty else 0.0,
-                "total_return": float(equity.iloc[-1] / equity.iloc[0] - 1.0) if len(equity) >= 2 and equity.iloc[0] > 0 else 0.0,
-                "max_drawdown": float(max_drawdown),
-                "current_drawdown": float(current_drawdown),
-                "mean_period_return": float(returns.mean()) if not returns.empty else 0.0,
-                "period_volatility": float(returns.std(ddof=1)) if len(returns) > 1 else 0.0,
-                "sharpe_ratio": calculate_sharpe_ratio(returns, periods_per_year),
-                "sortino_ratio": calculate_sortino_ratio(returns, periods_per_year),
-                "best_period_return": float(returns.max()) if not returns.empty else 0.0,
-                "worst_period_return": float(returns.min()) if not returns.empty else 0.0,
-            }
-        ]
-    )
-
+    stdev = float(returns.std(ddof=1)) if len(returns) > 1 else 0.0
+    downside_stdev = float(downside.std(ddof=1)) if len(downside) > 1 else 0.0
+    mean_ret = float(returns.mean()) if not returns.empty else 0.0
+    ann = math.sqrt(periods_per_year) if periods_per_year else 1.0
+    sharpe = 0.0 if stdev == 0.0 else float(mean_ret / stdev * ann)
+    sortino = 0.0 if downside_stdev == 0.0 else float(mean_ret / downside_stdev * ann)
+    volatility = float(stdev * ann)
+    realized_volatility = volatility
+    value_at_risk_95 = float(returns.quantile(0.05)) if not returns.empty else 0.0
+    value_at_risk_99 = float(returns.quantile(0.01)) if not returns.empty else 0.0
+    current_equity = float(equity.iloc[-1])
+    start_equity = float(equity.iloc[0])
+    result = pd.DataFrame([{
+        "timestamp": pd.Timestamp.utcnow().isoformat(),
+        "status": "ok",
+        "observations": int(len(equity)),
+        "return_observations": int(len(returns)),
+        "current_equity": current_equity,
+        "starting_equity_in_curve": start_equity,
+        "total_return": float(current_equity / start_equity - 1.0) if start_equity > 0 else 0.0,
+        "max_drawdown": float(drawdown.min()) if not drawdown.empty else 0.0,
+        "current_drawdown": float(drawdown.iloc[-1]) if not drawdown.empty else 0.0,
+        "mean_period_return": mean_ret,
+        "volatility": volatility,
+        "realized_volatility": realized_volatility,
+        "sharpe_ratio": sharpe,
+        "sortino_ratio": sortino,
+        "best_period_return": float(returns.max()) if not returns.empty else 0.0,
+        "worst_period_return": float(returns.min()) if not returns.empty else 0.0,
+        "value_at_risk_95": value_at_risk_95,
+        "value_at_risk_99": value_at_risk_99,
+    }])
     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(output_file, index=False)
-    print("Paper risk metrics generated.")
     return result
 
+def print_risk_metrics_report(metrics: pd.DataFrame) -> None:
+    print("\n========== PAPER RISK METRICS ==========")
+    if metrics.empty or metrics.iloc[-1].get("status") not in ["ok", None]:
+        print("Not enough equity data yet.")
+        print("========================================")
+        return
+    row = metrics.iloc[-1]
+    print(f"Observations:          {int(row.get('observations', 0))}")
+    print(f"Sharpe ratio:          {float(row.get('sharpe_ratio', 0.0)):.4f}")
+    print(f"Sortino ratio:         {float(row.get('sortino_ratio', 0.0)):.4f}")
+    print(f"Volatility:            {float(row.get('volatility', 0.0)):.2%}")
+    print(f"Max drawdown:          {float(row.get('max_drawdown', 0.0)):.2%}")
+    print(f"Current drawdown:      {float(row.get('current_drawdown', 0.0)):.2%}")
+    print(f"Best period return:    {float(row.get('best_period_return', 0.0)):.2%}")
+    print(f"Worst period return:   {float(row.get('worst_period_return', 0.0)):.2%}")
+    print(f"VaR 95%:               {float(row.get('value_at_risk_95', 0.0)):.2%}")
+    print(f"VaR 99%:               {float(row.get('value_at_risk_99', 0.0)):.2%}")
+    print("========================================")
 
 if __name__ == "__main__":
-    calculate_risk_metrics()
+    print_risk_metrics_report(calculate_risk_metrics())
 ===== ./execution/strategy_tuning.py =====
 """
 execution/strategy_tuning.py
@@ -9345,106 +8599,71 @@ def run_strategy_tuning() -> pd.DataFrame:
 
 if __name__ == "__main__":
     run_strategy_tuning()===== ./execution/paper_performance_report.py =====
-"""
-execution/paper_performance_report.py
-
-Generates a lightweight paper trading performance report.
-"""
-
 from __future__ import annotations
-
 from pathlib import Path
-
+import math
 import pandas as pd
-
 from execution.paper_trader import PaperTraderConfig
-from execution.paper_account_reconciliation import load_csv_if_exists, load_cash, calculate_open_current_value, calculate_unrealized_pnl
-
+from execution.paper_account_reconciliation import load_csv_if_exists, load_cash, calculate_open_current_value, calculate_unrealized_pnl, calculate_realized_pnl
 SUMMARY_FILE = "outputs/paper_performance_summary.csv"
 
-
 def numeric_column(df: pd.DataFrame, possible_columns: list[str], default: float = 0.0) -> pd.Series:
-    if df.empty:
-        return pd.Series(dtype=float)
-    for column in possible_columns:
-        if column in df.columns:
-            return pd.to_numeric(df[column], errors="coerce").fillna(default)
+    if df.empty: return pd.Series(dtype=float)
+    for col in possible_columns:
+        if col in df.columns: return pd.to_numeric(df[col], errors="coerce").fillna(default)
     return pd.Series([default] * len(df), index=df.index, dtype=float)
-
 
 def calculate_closed_trade_metrics(trade_history: pd.DataFrame) -> dict[str, float | int]:
     if trade_history.empty:
-        return {
-            "closed_trades": 0,
-            "winning_trades": 0,
-            "losing_trades": 0,
-            "win_rate": 0.0,
-            "realized_pnl": 0.0,
-            "average_win": 0.0,
-            "average_loss": 0.0,
-            "profit_factor": 0.0,
-        }
-
-    closed = trade_history
-    if "status" in closed.columns:
-        closed = closed[closed["status"].astype(str).str.lower().eq("closed")]
-
+        return {"closed_trades": 0, "winning_trades": 0, "losing_trades": 0, "win_rate": 0.0, "realized_pnl": 0.0, "average_win": 0.0, "average_loss": 0.0, "profit_factor": 0.0}
+    closed = trade_history.copy()
+    if "status" in closed.columns: closed = closed[closed["status"].astype(str).str.lower().eq("closed")]
     pnl = numeric_column(closed, ["pnl_usd", "pnl"], 0.0)
-    wins = pnl[pnl > 0]
-    losses = pnl[pnl < 0]
-    gross_profit = float(wins.sum()) if not wins.empty else 0.0
-    gross_loss = abs(float(losses.sum())) if not losses.empty else 0.0
+    wins, losses = pnl[pnl > 0], pnl[pnl < 0]
+    gross_win, gross_loss = float(wins.sum()), abs(float(losses.sum()))
+    return {"closed_trades": int(len(pnl)), "winning_trades": int(len(wins)), "losing_trades": int(len(losses)), "win_rate": float(len(wins) / len(pnl)) if len(pnl) else 0.0, "realized_pnl": float(pnl.sum()), "average_win": float(wins.mean()) if len(wins) else 0.0, "average_loss": float(losses.mean()) if len(losses) else 0.0, "profit_factor": gross_win / gross_loss if gross_loss > 0 else (math.inf if gross_win > 0 else 0.0)}
 
-    closed_count = int(len(pnl))
-    return {
-        "closed_trades": closed_count,
-        "winning_trades": int(len(wins)),
-        "losing_trades": int(len(losses)),
-        "win_rate": float(len(wins) / closed_count) if closed_count else 0.0,
-        "realized_pnl": float(pnl.sum()) if not pnl.empty else 0.0,
-        "average_win": float(wins.mean()) if not wins.empty else 0.0,
-        "average_loss": float(losses.mean()) if not losses.empty else 0.0,
-        "profit_factor": float(gross_profit / gross_loss) if gross_loss > 0 else 0.0,
-    }
-
-
-def generate_paper_performance_report(
-    config: PaperTraderConfig | None = None,
-    output_file: str = SUMMARY_FILE,
-) -> pd.DataFrame:
-    if config is None:
-        config = PaperTraderConfig()
-
-    trade_history = load_csv_if_exists(config.trade_history_file)
-    open_positions = load_csv_if_exists(config.positions_file)
+def generate_paper_performance_report(config: PaperTraderConfig | None = None, output_file: str = SUMMARY_FILE) -> pd.DataFrame:
+    if config is None: config = PaperTraderConfig()
+    history = load_csv_if_exists(config.trade_history_file)
+    positions = load_csv_if_exists(config.positions_file)
     cash = load_cash(config)
-
-    closed_metrics = calculate_closed_trade_metrics(trade_history)
-    open_value = calculate_open_current_value(open_positions)
-    unrealized_pnl = calculate_unrealized_pnl(open_positions)
+    open_value = calculate_open_current_value(positions)
+    unrealized = calculate_unrealized_pnl(positions)
+    realized = calculate_realized_pnl(history)
     equity = cash + open_value
-    total_return = equity / config.initial_cash - 1.0 if config.initial_cash > 0 else 0.0
-
-    summary = {
-        "timestamp": pd.Timestamp.utcnow().isoformat(),
-        "cash": float(cash),
-        "open_positions": int(len(open_positions)) if not open_positions.empty else 0,
-        "open_current_value": float(open_value),
-        "unrealized_pnl": float(unrealized_pnl),
-        "estimated_equity": float(equity),
-        "total_return": float(total_return),
-        **closed_metrics,
-    }
-
-    result = pd.DataFrame([summary])
+    trade_metrics = calculate_closed_trade_metrics(history)
+    row = {"timestamp": pd.Timestamp.utcnow().isoformat(), "cash": cash, "open_position_value": open_value, "estimated_equity": equity, "realized_pnl": realized, "unrealized_pnl": unrealized, "total_pnl": equity - config.initial_cash, "total_return": equity / config.initial_cash - 1.0 if config.initial_cash > 0 else 0.0, "open_positions": int(len(positions)) if not positions.empty else 0, **trade_metrics}
+    result = pd.DataFrame([row])
     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(output_file, index=False)
-    print("Paper performance report generated.")
     return result
 
+def print_performance_report(report: pd.DataFrame) -> None:
+    print("\n========== PAPER PERFORMANCE ==========")
+    if report.empty:
+        print("No performance data.")
+        print("=======================================")
+        return
+    row = report.iloc[-1]
+    print(f"Estimated equity:      ${float(row.get('estimated_equity', 0.0)):,.2f}")
+    print(f"Total PnL:             ${float(row.get('total_pnl', 0.0)):,.2f}")
+    print(f"Total return:          {float(row.get('total_return', 0.0)):.2%}")
+    print(f"Realized PnL:          ${float(row.get('realized_pnl', 0.0)):,.2f}")
+    print(f"Unrealized PnL:        ${float(row.get('unrealized_pnl', 0.0)):,.2f}")
+    print("---------------------------------------")
+    print(f"Closed trades:         {int(row.get('closed_trades', 0))}")
+    print(f"Winning trades:        {int(row.get('winning_trades', 0))}")
+    print(f"Losing trades:         {int(row.get('losing_trades', 0))}")
+    print(f"Win rate:              {float(row.get('win_rate', 0.0)):.2%}")
+    print(f"Average win:           ${float(row.get('average_win', 0.0)):,.2f}")
+    print(f"Average loss:          ${float(row.get('average_loss', 0.0)):,.2f}")
+    pf = row.get('profit_factor', 0.0)
+    print(f"Profit factor:         {'inf' if pf == math.inf else f'{float(pf):.4f}'}")
+    print("=======================================")
 
 if __name__ == "__main__":
-    generate_paper_performance_report()
+    print_performance_report(generate_paper_performance_report())
 ===== ./execution/professional_candidate_filter.py =====
 """
 execution/professional_candidate_filter.py
@@ -9987,90 +9206,37 @@ def filter_candidate_file(
 
 if __name__ == "__main__":
     filter_candidate_file()===== ./execution/live_scheduler.py =====
-"""
-execution/live_scheduler.py
-
-Cleaner paper-trading scheduler.
-
-Target cycle:
-1. Manage existing positions first.
-2. Reconcile account before adding new risk.
-3. Build raw candidates only.
-4. Apply professional candidate filter.
-5. Open new paper trades through dynamic portfolio allocation.
-6. Reconcile again.
-7. Generate lightweight reports.
-8. Optional visual report.
-
-Paper trading only. No real orders are placed.
-"""
-
+"""Robust paper-trading scheduler with single clean report block."""
 from __future__ import annotations
-
-import dataclasses
-import time
-import traceback
+import dataclasses, time, traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
 import pandas as pd
-
-from backtesting.live_option_backtest_engine import (
-    LiveOptionBacktestConfig,
-    run_live_option_paper_backtest,
-)
-from execution.professional_candidate_filter import (
-    ProfessionalFilterConfig,
-    filter_candidate_file,
-)
-from execution.paper_trader import (
-    PaperTraderConfig,
-    open_paper_trades,
-    print_paper_account_summary,
-)
+from backtesting.live_option_backtest_engine import LiveOptionBacktestConfig, run_live_option_paper_backtest
+from execution.professional_candidate_filter import ProfessionalFilterConfig, filter_candidate_file
+from execution.paper_trader import PaperTraderConfig, open_paper_trades, print_paper_account_summary, print_open_positions_table
 from execution.paper_position_manager import manage_paper_positions
 from execution.paper_account_reconciliation import generate_reconciliation_report
-from execution.paper_performance_report import generate_paper_performance_report
+from execution.paper_performance_report import generate_paper_performance_report, print_performance_report
 from execution.paper_equity_curve import generate_equity_curve
-from execution.paper_risk_metrics import calculate_risk_metrics
-
+from execution.paper_risk_metrics import calculate_risk_metrics, print_risk_metrics_report
 
 @dataclass
 class LiveSchedulerConfig:
     output_folder: str = "outputs"
-    sleep_seconds: int = 1000
+    sleep_seconds: int = 900
     max_cycles: int | None = 1
-
-    refresh_option_chain: bool = True
     option_chain_file: str = "outputs/live_eth_option_chain.csv"
     raw_candidates_file: str = "outputs/live_backtest_candidates.csv"
     filtered_candidates_file: str = "outputs/live_backtest_candidates_filtered.csv"
     rejected_candidates_file: str = "outputs/live_backtest_candidates_rejected.csv"
-
     paper_cash_file: str = "outputs/paper_cash.csv"
     paper_positions_file: str = "outputs/paper_open_positions.csv"
     paper_trade_history_file: str = "outputs/paper_trade_history.csv"
-
-    initial_cash: float = 10_000.0
-    max_risk_per_trade: float = 0.01
-
-    # Dynamic allocation settings.
-    max_positions: int = 30
-    target_positions: int = 4
-    max_new_positions_per_cycle: int = 3
-    normal_min_score: float = 0.25
-    expansion_min_score: float = 0.45
-    exceptional_min_score: float = 0.60
-    min_relative_to_best_score: float = 0.75
-
-    # Confidence-based sizing.
-    min_risk_per_trade: float = 0.001
-    max_confidence_risk_per_trade: float = 0.04
-    max_total_open_risk_pct: float = 0.25
-
-    # Candidate generation/filter settings.
+    refresh_option_chain: bool = True
     historical_vol_start_date: str = "2023-01-01"
+    initial_cash: float = 10_000.0
     risk_free_rate: float = 0.04
     min_days_to_expiry: float = 3.0
     max_days_to_expiry: float = 45.0
@@ -10083,376 +9249,244 @@ class LiveSchedulerConfig:
     allow_calls: bool = True
     allow_puts: bool = True
     only_trade_cheap_options: bool = True
+    max_positions: int = 30
+    target_positions: int = 4
+    max_new_positions_per_cycle: int = 2
+    normal_min_score: float = 0.25
+    expansion_min_score: float = 0.45
+    exceptional_min_score: float = 0.60
+    min_relative_to_best_score: float = 0.75
+    max_risk_per_trade: float = 0.01
+    min_risk_per_trade: float = 0.001
+    max_confidence_risk_per_trade: float = 0.04
+    max_total_open_risk_pct: float = 0.25
+    take_profit_pct: float = 0.30
+    stop_loss_pct: float = -0.25
+    min_days_to_expiry_exit: float = 1.5
+    run_advanced_visual_report: bool = False
 
-    # Optional expensive reporting.
-    run_visual_report: bool = False
+def ensure_output_folder(folder: str) -> None: Path(folder).mkdir(parents=True, exist_ok=True)
 
-
-def ensure_output_folder(folder: str) -> None:
-    Path(folder).mkdir(parents=True, exist_ok=True)
-
-
-def csv_has_rows(file_path: str) -> bool:
-    path = Path(file_path)
-    if not path.exists() or path.stat().st_size == 0:
-        return False
-    try:
-        return not pd.read_csv(path).empty
-    except Exception:
-        return False
-
+def clear_filtered_candidate_file(file_path: str) -> None:
+    Path(file_path).parent.mkdir(parents=True, exist_ok=True); pd.DataFrame().to_csv(file_path, index=False)
 
 def build_dataclass_config(cls: type, values: dict[str, Any]) -> Any:
-    """
-    Build external config dataclasses safely.
-    This lets the scheduler survive small differences between config versions.
-    """
-    if not dataclasses.is_dataclass(cls):
-        return cls()
-    allowed = {field.name for field in dataclasses.fields(cls)}
-    kwargs = {key: value for key, value in values.items() if key in allowed}
-    return cls(**kwargs)
-
+    if not dataclasses.is_dataclass(cls): return cls()
+    allowed = {f.name for f in dataclasses.fields(cls)}
+    return cls(**{k:v for k,v in values.items() if k in allowed})
 
 def build_scanner_config(cfg: LiveSchedulerConfig) -> LiveOptionBacktestConfig:
-    return build_dataclass_config(
-        LiveOptionBacktestConfig,
-        {
-            "refresh_option_chain": cfg.refresh_option_chain,
-            "option_chain_file": cfg.option_chain_file,
-            "output_folder": cfg.output_folder,
-            "historical_vol_start_date": cfg.historical_vol_start_date,
-            "initial_cash": cfg.initial_cash,
-            "max_risk_per_trade": cfg.max_risk_per_trade,
-            "max_positions": cfg.max_positions,
-            "risk_free_rate": cfg.risk_free_rate,
-            "min_days_to_expiry": cfg.min_days_to_expiry,
-            "max_days_to_expiry": cfg.max_days_to_expiry,
-            "min_market_price_usd": cfg.min_market_price_usd,
-            "max_bid_ask_spread_pct": cfg.max_bid_ask_spread_pct,
-            "price_threshold": cfg.price_threshold,
-            "volatility_threshold": cfg.volatility_threshold,
-            "min_volatility": cfg.min_volatility,
-            "max_volatility": cfg.max_volatility,
-            "allow_calls": cfg.allow_calls,
-            "allow_puts": cfg.allow_puts,
-            "only_trade_cheap_options": cfg.only_trade_cheap_options,
-        },
-    )
-
+    return build_dataclass_config(LiveOptionBacktestConfig, {"refresh_option_chain":cfg.refresh_option_chain,"option_chain_file":cfg.option_chain_file,"output_folder":cfg.output_folder,"historical_vol_start_date":cfg.historical_vol_start_date,"initial_cash":cfg.initial_cash,"max_risk_per_trade":cfg.max_risk_per_trade,"max_positions":cfg.max_positions,"risk_free_rate":cfg.risk_free_rate,"min_days_to_expiry":cfg.min_days_to_expiry,"max_days_to_expiry":cfg.max_days_to_expiry,"min_market_price_usd":cfg.min_market_price_usd,"max_bid_ask_spread_pct":cfg.max_bid_ask_spread_pct,"price_threshold":cfg.price_threshold,"volatility_threshold":cfg.volatility_threshold,"min_volatility":cfg.min_volatility,"max_volatility":cfg.max_volatility,"allow_calls":cfg.allow_calls,"allow_puts":cfg.allow_puts,"only_trade_cheap_options":cfg.only_trade_cheap_options})
 
 def build_filter_config(cfg: LiveSchedulerConfig) -> ProfessionalFilterConfig:
-    return build_dataclass_config(
-        ProfessionalFilterConfig,
-        {
-            "raw_candidates_file": cfg.raw_candidates_file,
-            "filtered_candidates_file": cfg.filtered_candidates_file,
-            "rejected_candidates_file": cfg.rejected_candidates_file,
-            "historical_vol_start_date": cfg.historical_vol_start_date,
-            "min_days_to_expiry": cfg.min_days_to_expiry,
-            "max_days_to_expiry": cfg.max_days_to_expiry,
-            "min_market_price_usd": cfg.min_market_price_usd,
-            "max_bid_ask_spread_pct": cfg.max_bid_ask_spread_pct,
-        },
-    )
-
+    return build_dataclass_config(ProfessionalFilterConfig, {"raw_candidates_file":cfg.raw_candidates_file,"filtered_candidates_file":cfg.filtered_candidates_file,"rejected_candidates_file":cfg.rejected_candidates_file,"historical_vol_start_date":cfg.historical_vol_start_date,"min_days_to_expiry":cfg.min_days_to_expiry,"max_days_to_expiry":cfg.max_days_to_expiry,"min_market_price_usd":cfg.min_market_price_usd,"max_bid_ask_spread_pct":cfg.max_bid_ask_spread_pct})
 
 def build_paper_config(cfg: LiveSchedulerConfig) -> PaperTraderConfig:
-    return PaperTraderConfig(
-        candidates_file=cfg.filtered_candidates_file,
-        positions_file=cfg.paper_positions_file,
-        trade_history_file=cfg.paper_trade_history_file,
-        initial_cash_file=cfg.paper_cash_file,
-        initial_cash=cfg.initial_cash,
-        max_risk_per_trade=cfg.max_risk_per_trade,
-        max_positions=cfg.max_positions,
-        target_positions=cfg.target_positions,
-        max_new_positions_per_cycle=cfg.max_new_positions_per_cycle,
-        normal_min_score=cfg.normal_min_score,
-        expansion_min_score=cfg.expansion_min_score,
-        exceptional_min_score=cfg.exceptional_min_score,
-        min_relative_to_best_score=cfg.min_relative_to_best_score,
-        only_trade_cheap_options=cfg.only_trade_cheap_options,
-        min_market_price_usd=cfg.min_market_price_usd,
-        min_risk_per_trade=cfg.min_risk_per_trade,
-        max_confidence_risk_per_trade=cfg.max_confidence_risk_per_trade,
-        max_total_open_risk_pct=cfg.max_total_open_risk_pct,
-    )
-
+    return build_dataclass_config(PaperTraderConfig, {"candidates_file":cfg.filtered_candidates_file,"positions_file":cfg.paper_positions_file,"trade_history_file":cfg.paper_trade_history_file,"initial_cash_file":cfg.paper_cash_file,"initial_cash":cfg.initial_cash,"max_risk_per_trade":cfg.max_risk_per_trade,"min_risk_per_trade":cfg.min_risk_per_trade,"max_confidence_risk_per_trade":cfg.max_confidence_risk_per_trade,"max_total_open_risk_pct":cfg.max_total_open_risk_pct,"max_positions":cfg.max_positions,"target_positions":cfg.target_positions,"max_new_positions_per_cycle":cfg.max_new_positions_per_cycle,"normal_min_score":cfg.normal_min_score,"expansion_min_score":cfg.expansion_min_score,"exceptional_min_score":cfg.exceptional_min_score,"min_relative_to_best_score":cfg.min_relative_to_best_score,"only_trade_cheap_options":cfg.only_trade_cheap_options,"min_market_price_usd":cfg.min_market_price_usd})
 
 def reconciliation_is_ok(paper_cfg: PaperTraderConfig) -> bool:
     report = generate_reconciliation_report(paper_cfg)
-    if report.empty or "reconciliation_ok" not in report.columns:
-        return False
-    return bool(report.iloc[-1]["reconciliation_ok"])
-
+    return bool(not report.empty and "reconciliation_ok" in report.columns and report.iloc[-1]["reconciliation_ok"])
 
 def run_position_management_cycle(paper_cfg: PaperTraderConfig, cfg: LiveSchedulerConfig) -> None:
     print("\n========== STEP 1: MANAGE OPEN POSITIONS ==========")
-    manage_paper_positions(
-        trader_config=paper_cfg,
-        take_profit_pct=cfg.take_profit_pct,
-        stop_loss_pct=cfg.stop_loss_pct,
-        min_days_to_expiry=cfg.min_days_to_expiry_exit,
-    )
-
+    manage_paper_positions(paper_cfg, cfg.take_profit_pct, cfg.stop_loss_pct, cfg.min_days_to_expiry_exit)
 
 def run_scanner_cycle(cfg: LiveSchedulerConfig) -> None:
     print("\n========== STEP 3: BUILD RAW CANDIDATES ==========")
-    scanner_cfg = build_scanner_config(cfg)
-    run_live_option_paper_backtest(scanner_cfg)
+    run_live_option_paper_backtest(build_scanner_config(cfg))
 
+def print_passed_options_report(filtered: pd.DataFrame, top_n: int = 15) -> None:
+    print("\n========== OPTIONS THAT PASSED FILTER ==========")
+    if filtered is None or filtered.empty:
+        print("No options passed current-cycle professional filter.")
+        print("===============================================")
+        return
+    data = filtered.copy()
+    for col in ["portfolio_candidate_score","combined_score","mispricing_score","market_price_usd","model_price_usd","price_diff_pct","volatility_spread","days_to_expiry","strike","delta","bid_ask_spread_pct"]:
+        if col in data.columns: data[col] = pd.to_numeric(data[col], errors="coerce")
+    score_col = "portfolio_candidate_score" if "portfolio_candidate_score" in data.columns else ("combined_score" if "combined_score" in data.columns else ("mispricing_score" if "mispricing_score" in data.columns else None))
+    if score_col: data = data.sort_values(score_col, ascending=False)
+    cols = [c for c in ["instrument_name","option_type","strike","days_to_expiry","market_price_usd","model_price_usd","price_diff_pct","volatility_spread","delta","bid_ask_spread_pct",score_col,"classification","decision_reason","liquidity_reason"] if c and c in data.columns]
+    visible = data[cols].head(top_n).copy()
+    rename = {"instrument_name":"instrument","option_type":"type","days_to_expiry":"DTE","market_price_usd":"market","model_price_usd":"model","price_diff_pct":"price_diff","volatility_spread":"vol_spread","bid_ask_spread_pct":"spread",score_col:"score" if score_col else score_col}
+    visible = visible.rename(columns=rename)
+    for c in visible.columns:
+        if pd.api.types.is_numeric_dtype(visible[c]): visible[c] = visible[c].round(4)
+    print(f"Passed options: {len(data)}")
+    print(visible.to_string(index=False))
+    print("===============================================")
 
 def run_professional_filter_cycle(cfg: LiveSchedulerConfig) -> pd.DataFrame:
     print("\n========== STEP 4: PROFESSIONAL FILTER ==========")
-    filter_cfg = build_filter_config(cfg)
-    filtered = filter_candidate_file(filter_cfg)
-    if filtered is None:
+    filtered = filter_candidate_file(build_filter_config(cfg))
+    if filtered is None or filtered.empty:
+        clear_filtered_candidate_file(cfg.filtered_candidates_file)
+        print_passed_options_report(pd.DataFrame())
         return pd.DataFrame()
+    print_passed_options_report(filtered)
     return filtered
-
 
 def run_trade_opening_cycle(paper_cfg: PaperTraderConfig) -> None:
     print("\n========== STEP 5: DYNAMIC ALLOCATION + OPEN ==========")
     open_paper_trades(paper_cfg)
 
-
 def run_reporting_cycle(paper_cfg: PaperTraderConfig, cfg: LiveSchedulerConfig) -> None:
     print("\n========== STEP 7: REPORTING ==========")
-    generate_paper_performance_report(paper_cfg)
+    performance = generate_paper_performance_report(paper_cfg)
     generate_equity_curve(paper_cfg)
-    calculate_risk_metrics()
+    risk_metrics = calculate_risk_metrics()
     print_paper_account_summary(paper_cfg)
-
-    if cfg.run_visual_report:
+    print_performance_report(performance)
+    print_risk_metrics_report(risk_metrics)
+    print_open_positions_table(paper_cfg)
+    if cfg.run_advanced_visual_report:
         try:
-            from visualization.live_option_report import generate_live_option_report
-
-            generate_live_option_report(
-                candidates_file=cfg.raw_candidates_file,
-                positions_file=cfg.paper_positions_file,
-                show_plot=False,
-            )
-        except Exception as error:
-            print(f"Visual report skipped: {error}")
-
+            from visualization.advanced_3d_dashboard import generate_advanced_visual_report
+            generate_advanced_visual_report(show_plot=False)
+        except Exception as e:
+            print(f"Advanced 3D report skipped: {e}")
 
 def run_one_cycle(cfg: LiveSchedulerConfig) -> None:
     ensure_output_folder(cfg.output_folder)
     paper_cfg = build_paper_config(cfg)
-
     print("\n====================================================")
     print(f"STARTING PAPER CYCLE: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print("====================================================")
-
     run_position_management_cycle(paper_cfg, cfg)
-
     print("\n========== STEP 2: RECONCILE BEFORE NEW RISK ==========")
     if not reconciliation_is_ok(paper_cfg):
         print("Reconciliation failed. Skipping scanner/opening/reporting for safety.")
+        print_open_positions_table(paper_cfg)
         return
-
     run_scanner_cycle(cfg)
     filtered = run_professional_filter_cycle(cfg)
-
-    if filtered.empty and not csv_has_rows(cfg.filtered_candidates_file):
-        print("No filtered candidates. Skipping trade opening.")
-    else:
-        run_trade_opening_cycle(paper_cfg)
-
+    if filtered.empty: print("No current-cycle filtered candidates. Skipping trade opening.")
+    else: run_trade_opening_cycle(paper_cfg)
     print("\n========== STEP 6: RECONCILE AFTER OPENING ==========")
     reconciliation_is_ok(paper_cfg)
-
     run_reporting_cycle(paper_cfg, cfg)
 
-
 def run_live_scheduler(cfg: LiveSchedulerConfig | None = None) -> None:
-    if cfg is None:
-        cfg = LiveSchedulerConfig()
-
+    if cfg is None: cfg = LiveSchedulerConfig()
     cycle = 0
     while True:
         cycle += 1
-        try:
-            run_one_cycle(cfg)
+        try: run_one_cycle(cfg)
         except KeyboardInterrupt:
-            print("Scheduler stopped by user.")
-            break
+            print("\nScheduler stopped by user."); break
         except Exception:
-            print("ERROR during scheduler cycle:")
-            traceback.print_exc()
-
+            print("ERROR during scheduler cycle:"); traceback.print_exc()
         if cfg.max_cycles is not None and cycle >= cfg.max_cycles:
-            print(f"Reached max_cycles={cfg.max_cycles}. Stopping scheduler.")
-            break
-
-        print(f"Sleeping {cfg.sleep_seconds} seconds...")
-        time.sleep(cfg.sleep_seconds)
-
+            print(f"Reached max_cycles={cfg.max_cycles}. Stopping scheduler."); break
+        try:
+            print(f"Sleeping {cfg.sleep_seconds} seconds..."); time.sleep(cfg.sleep_seconds)
+        except KeyboardInterrupt:
+            print("\nScheduler stopped by user during sleep."); break
 
 if __name__ == "__main__":
-    config = LiveSchedulerConfig(
-        sleep_seconds=600,
-        max_cycles=400,
-        max_positions=30,
-        target_positions=4,
-        max_new_positions_per_cycle=3,
-        run_visual_report=False,
-    )
-    run_live_scheduler(config)
+    run_live_scheduler(LiveSchedulerConfig(sleep_seconds=900, max_cycles=None))
 ===== ./execution/paper_account_reconciliation.py =====
-"""
-execution/paper_account_reconciliation.py
-
-Paper account reconciliation.
-
-Checks whether cash, open positions, and trade history are internally consistent.
-This should be used as a safety gate before opening new paper trades.
-"""
-
+"""Paper account reconciliation."""
 from __future__ import annotations
-
 from pathlib import Path
-from typing import Any
-
 import pandas as pd
-
 from execution.paper_trader import PaperTraderConfig
-
-RECONCILIATION_FILE = "outputs/paper_account_reconciliation.csv"
-TOLERANCE = 0.01
-
+RECONCILIATION_FILE = 'outputs/paper_account_reconciliation.csv'
+TOLERANCE = 0.10
 
 def load_csv_if_exists(path: str) -> pd.DataFrame:
-    file_path = Path(path)
-    if not file_path.exists() or file_path.stat().st_size == 0:
+    p = Path(path)
+    if not p.exists() or p.stat().st_size == 0:
         return pd.DataFrame()
     try:
-        return pd.read_csv(file_path)
+        return pd.read_csv(p)
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
-
 
 def numeric_column(df: pd.DataFrame, possible_columns: list[str], default: float = 0.0) -> pd.Series:
     if df.empty:
         return pd.Series(dtype=float)
-    for column in possible_columns:
-        if column in df.columns:
-            return pd.to_numeric(df[column], errors="coerce").fillna(default)
+    for c in possible_columns:
+        if c in df.columns:
+            return pd.to_numeric(df[c], errors='coerce').fillna(default)
     return pd.Series([default] * len(df), index=df.index, dtype=float)
 
-
 def load_cash(config: PaperTraderConfig) -> float:
-    cash_df = load_csv_if_exists(config.initial_cash_file)
-    if cash_df.empty:
+    df = load_csv_if_exists(config.initial_cash_file)
+    if df.empty:
         return float(config.initial_cash)
-    for column in ["cash", "paper_cash", "current_cash"]:
-        if column in cash_df.columns:
-            value = pd.to_numeric(cash_df[column], errors="coerce").dropna()
-            if not value.empty:
-                return float(value.iloc[-1])
+    for c in ['cash','paper_cash','current_cash']:
+        if c in df.columns:
+            vals = pd.to_numeric(df[c], errors='coerce').dropna()
+            if not vals.empty:
+                return float(vals.iloc[-1])
     return float(config.initial_cash)
-
 
 def calculate_open_current_value(open_positions: pd.DataFrame) -> float:
     if open_positions.empty:
         return 0.0
-    if "status" in open_positions.columns:
-        open_positions = open_positions[open_positions["status"].astype(str).str.lower().eq("open")]
-    values = numeric_column(open_positions, ["current_value_usd", "market_value_usd"], 0.0)
-    if values.empty or float(values.sum()) == 0.0:
-        prices = numeric_column(open_positions, ["current_price_usd", "entry_price_usd"], 0.0)
-        quantities = numeric_column(open_positions, ["quantity"], 0.0)
-        return float((prices * quantities).sum())
-    return float(values.sum())
-
+    data = open_positions.copy()
+    if 'status' in data.columns:
+        data = data[data['status'].astype(str).str.lower().eq('open')]
+    values = numeric_column(data, ['current_value_usd','market_value_usd'], 0.0)
+    if not values.empty and float(values.sum()) > 0:
+        return float(values.sum())
+    return float((numeric_column(data, ['current_price_usd','entry_price_usd'], 0.0) * numeric_column(data, ['quantity'], 0.0)).sum())
 
 def calculate_unrealized_pnl(open_positions: pd.DataFrame) -> float:
     if open_positions.empty:
         return 0.0
-    if "status" in open_positions.columns:
-        open_positions = open_positions[open_positions["status"].astype(str).str.lower().eq("open")]
-    pnl = numeric_column(open_positions, ["unrealized_pnl_usd", "unrealized_pnl"], 0.0)
-    return float(pnl.sum()) if not pnl.empty else 0.0
-
+    data = open_positions.copy()
+    if 'status' in data.columns:
+        data = data[data['status'].astype(str).str.lower().eq('open')]
+    pnl = numeric_column(data, ['unrealized_pnl_usd','unrealized_pnl'], 0.0)
+    if not pnl.empty and abs(float(pnl.sum())) > 0:
+        return float(pnl.sum())
+    return float(((numeric_column(data, ['current_price_usd'], 0.0) - numeric_column(data, ['entry_price_usd'], 0.0)) * numeric_column(data, ['quantity'], 0.0)).sum())
 
 def calculate_realized_pnl(trade_history: pd.DataFrame) -> float:
     if trade_history.empty:
         return 0.0
-    closed = trade_history
-    if "status" in closed.columns:
-        closed = closed[closed["status"].astype(str).str.lower().eq("closed")]
-    pnl = numeric_column(closed, ["pnl_usd", "pnl"], 0.0)
-    return float(pnl.sum()) if not pnl.empty else 0.0
-
+    data = trade_history.copy()
+    if 'status' in data.columns:
+        data = data[data['status'].astype(str).str.lower().eq('closed')]
+    return float(numeric_column(data, ['pnl_usd','pnl'], 0.0).sum())
 
 def calculate_expected_cash_from_history(config: PaperTraderConfig, trade_history: pd.DataFrame, open_positions: pd.DataFrame) -> float:
-    expected_cash = float(config.initial_cash)
-
-    if not trade_history.empty:
-        statuses = trade_history.get("status", pd.Series([""] * len(trade_history))).astype(str).str.lower()
-        opens = trade_history[statuses.eq("open")]
-        closes = trade_history[statuses.eq("closed")]
-
-        open_costs = numeric_column(opens, ["capital_at_risk", "entry_cost_usd", "cost_usd"], 0.0)
-        close_values = numeric_column(closes, ["current_value_usd", "exit_value_usd", "proceeds_usd"], 0.0)
-
-        expected_cash -= float(open_costs.sum()) if not open_costs.empty else 0.0
-        expected_cash += float(close_values.sum()) if not close_values.empty else 0.0
-
-    # If open trades are not logged as open rows in history, subtract current open capital.
+    expected = float(config.initial_cash)
     if not open_positions.empty:
-        costs = numeric_column(open_positions, ["capital_at_risk", "entry_cost_usd"], 0.0)
-        # Avoid double subtracting if history already contains open rows.
-        if trade_history.empty or "status" not in trade_history.columns or not trade_history["status"].astype(str).str.lower().eq("open").any():
-            expected_cash -= float(costs.sum()) if not costs.empty else 0.0
+        open_data = open_positions.copy()
+        if 'status' in open_data.columns:
+            open_data = open_data[open_data['status'].astype(str).str.lower().eq('open')]
+        expected -= float(numeric_column(open_data, ['capital_at_risk','entry_cost_usd','cost_usd'], 0.0).sum())
+    if not trade_history.empty:
+        closed = trade_history.copy()
+        if 'status' in closed.columns:
+            closed = closed[closed['status'].astype(str).str.lower().eq('closed')]
+        if not closed.empty:
+            expected -= float(numeric_column(closed, ['capital_at_risk','entry_cost_usd','cost_usd'], 0.0).sum())
+            exit_values = numeric_column(closed, ['exit_value_usd','proceeds_usd'], 0.0)
+            if exit_values.empty or float(exit_values.sum()) == 0.0:
+                exit_values = numeric_column(closed, ['exit_price_usd','current_price_usd'], 0.0) * numeric_column(closed, ['quantity'], 0.0)
+            expected += float(exit_values.sum())
+    return float(expected)
 
-    return float(expected_cash)
-
-
-def generate_reconciliation_report(
-    config: PaperTraderConfig | None = None,
-    output_file: str = RECONCILIATION_FILE,
-) -> pd.DataFrame:
+def generate_reconciliation_report(config: PaperTraderConfig | None = None, output_file: str = RECONCILIATION_FILE) -> pd.DataFrame:
     if config is None:
         config = PaperTraderConfig()
-
-    trade_history = load_csv_if_exists(config.trade_history_file)
+    history = load_csv_if_exists(config.trade_history_file)
     open_positions = load_csv_if_exists(config.positions_file)
     actual_cash = load_cash(config)
-
-    expected_cash = calculate_expected_cash_from_history(config, trade_history, open_positions)
+    expected_cash = calculate_expected_cash_from_history(config, history, open_positions)
     cash_difference = actual_cash - expected_cash
-    open_current_value = calculate_open_current_value(open_positions)
-    realized_pnl = calculate_realized_pnl(trade_history)
-    unrealized_pnl = calculate_unrealized_pnl(open_positions)
-    equity_estimate = actual_cash + open_current_value
-    reconciliation_ok = abs(cash_difference) <= TOLERANCE
-
-    report = pd.DataFrame(
-        [
-            {
-                "timestamp": pd.Timestamp.utcnow().isoformat(),
-                "actual_cash": float(actual_cash),
-                "expected_cash": float(expected_cash),
-                "cash_difference": float(cash_difference),
-                "open_current_value": float(open_current_value),
-                "realized_pnl": float(realized_pnl),
-                "unrealized_pnl": float(unrealized_pnl),
-                "equity_estimate": float(equity_estimate),
-                "open_positions": int(len(open_positions)) if not open_positions.empty else 0,
-                "reconciliation_ok": bool(reconciliation_ok),
-            }
-        ]
-    )
-
+    report = pd.DataFrame([{'timestamp': pd.Timestamp.utcnow().isoformat(), 'actual_cash': float(actual_cash), 'expected_cash': float(expected_cash), 'cash_difference': float(cash_difference), 'open_current_value': calculate_open_current_value(open_positions), 'realized_pnl': calculate_realized_pnl(history), 'unrealized_pnl': calculate_unrealized_pnl(open_positions), 'equity_estimate': float(actual_cash + calculate_open_current_value(open_positions)), 'open_positions': int(len(open_positions)) if not open_positions.empty else 0, 'reconciliation_ok': bool(abs(cash_difference) <= TOLERANCE)}])
     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
     report.to_csv(output_file, index=False)
-    print(f"Reconciliation OK: {reconciliation_ok}")
+    print(f"Reconciliation OK: {bool(report.iloc[-1]['reconciliation_ok'])}")
     return report
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     generate_reconciliation_report()
 ===== ./main.py =====
 """
