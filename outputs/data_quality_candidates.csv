@@ -1,0 +1,2 @@
+dataset_name,total_rows,valid_rows,invalid_rows,quality_score,missing_required_count,invalid_price_count,crossed_market_count,wide_spread_count,invalid_iv_count,duplicate_instrument_count,stale_or_missing_timestamp_count,notes,issues,issues_json,timestamp
+candidate_signals,66,66,0,1.0,0,0,0,0,0,0,0,ok,[],[],2026-05-13T09:19:05.066764+00:00

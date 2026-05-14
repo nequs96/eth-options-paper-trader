@@ -1,2 +1,2 @@
-timestamp,status,reconciliation_ok,ledger_cash_match,actual_cash,expected_cash_from_history,cash_difference,open_cost_basis,open_current_value,realized_pnl,unrealized_pnl,actual_total_pnl,equity_estimate,open_positions,closed_trades,duplicate_open_instruments
-2026-05-10T16:14:45.119645+00:00,ok,True,True,10000.0,10000.0,0.0,0.0,0.0,0.0,0.0,0.0,10000.0,0,0,0
+timestamp,status,reconciliation_ok,actual_cash,equity_estimate,open_positions,duplicate_open_instruments
+2026-05-14T06:48:25.476826+00:00,ok,True,9476.2933348448,9549.177352380188,1,0

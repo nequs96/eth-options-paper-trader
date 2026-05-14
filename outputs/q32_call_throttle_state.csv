@@ -1,0 +1,2 @@
+timestamp,block_new_calls,call_loss_rate,call_expectancy,reasons,block_hours
+2026-05-14T06:48:10.635689+00:00,True,0.625,-0.0756588880483729,call_loss_rate_high:0.62;call_expectancy_negative:-0.08,24.0

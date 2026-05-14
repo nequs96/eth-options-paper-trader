@@ -1,0 +1,5 @@
+Self termination guard: terminate=False reasons=[]
+Regime failure detector: HEALTHY ['recent_loss_rate_high']
+Autonomous pause state: paused=True reasons=['risk_breach']
+Auto-derisk blocked: stale_data
+Autonomous daemon sleeping 900s...

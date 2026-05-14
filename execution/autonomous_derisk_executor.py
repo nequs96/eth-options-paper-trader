@@ -1,0 +1,31 @@
+from __future__ import annotations
+import pandas as pd
+from execution.autonomous_config import AutonomousSafetyConfig
+from execution.safety_kernel import SafetyKernel
+from execution.robust_io import read_csv_safe, atomic_write_csv, append_csv_atomic
+try:
+    from execution.portfolio_derisker import build_derisking_recommendations
+except Exception:
+    build_derisking_recommendations = None
+
+
+def execute_autonomous_derisk(cfg: AutonomousSafetyConfig | None = None) -> pd.DataFrame:
+    cfg = cfg or AutonomousSafetyConfig(); kernel = SafetyKernel(cfg); decision = kernel.allow('auto_derisk')
+    if not decision.allow:
+        print('Auto-derisk blocked:', ';'.join(decision.reasons)); return pd.DataFrame()
+    if not cfg.allow_paper_auto_derisk:
+        print('Auto-derisk disabled by config.'); return pd.DataFrame()
+    rec = build_derisking_recommendations() if build_derisking_recommendations else read_csv_safe('outputs/derisking_recommendations.csv')
+    pos = read_csv_safe('outputs/paper_open_positions.csv')
+    if rec.empty or pos.empty: return pd.DataFrame()
+    close_names = set(rec.head(cfg.max_auto_derisk_per_cycle)['instrument_name'].astype(str)) if 'instrument_name' in rec.columns else set()
+    actions=[]; keep=[]; closed=[]; now=pd.Timestamp.utcnow().isoformat()
+    for _,r in pos.iterrows():
+        if str(r.get('instrument_name')) in close_names and str(r.get('status','open')).lower() == 'open':
+            row=r.to_dict(); row.update({'status':'closed','closed_at':now,'close_reason':'autonomous_derisk','autonomous_action':'CLOSED'}); closed.append(row); actions.append(row)
+        else: keep.append(r.to_dict())
+    if actions:
+        atomic_write_csv('outputs/paper_open_positions.csv', pd.DataFrame(keep)); hist=read_csv_safe('outputs/paper_trade_history.csv'); hist=pd.concat([hist,pd.DataFrame(closed)], ignore_index=True) if not hist.empty else pd.DataFrame(closed); atomic_write_csv('outputs/paper_trade_history.csv', hist)
+    out=pd.DataFrame(actions); atomic_write_csv('outputs/autonomous_derisk_actions.csv', out); append_csv_atomic('outputs/autonomous_control_log.csv', {'timestamp':now,'event':'autonomous_derisk','actions':len(out)}); print(f'Autonomous derisk complete. closed={len(out)}'); return out
+
+if __name__=='__main__': execute_autonomous_derisk()

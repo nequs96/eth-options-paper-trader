@@ -1,20 +1,6 @@
-"""
-models/trend_regime_model.py
-
-Trend + volatility regime model for ETH.
-
-This model answers:
-- Is the market bullish / bearish / neutral?
-- Is volatility expanding (good for long options)?
-- Is the regime hostile to long options?
-
-No predictions, only regime classification.
-"""
-
+from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
-import pandas as pd
-
 from data.market_data import download_eth_data, get_close_prices
 
 
@@ -30,45 +16,20 @@ class TrendRegime:
     hv_slow: float
 
 
-def annualized_vol(prices: pd.Series, window: int) -> float:
+def annualized_vol(prices, window: int) -> float:
     returns = np.log(prices / prices.shift(1)).dropna()
-    if len(returns) < window:
-        return 0.0
-    return float(returns.tail(window).std(ddof=1) * np.sqrt(365))
+    return 0.0 if len(returns) < window else float(returns.tail(window).std(ddof=1) * np.sqrt(365))
 
 
-def get_trend_regime(
-    start_date: str = "2023-01-01",
-    sma_fast_window: int = 20,
-    sma_slow_window: int = 50,
-    hv_fast_window: int = 20,
-    hv_slow_window: int = 60,
-) -> TrendRegime:
-    data = download_eth_data(start_date=start_date)
-    close = get_close_prices(data).dropna()
-
-    if len(close) < max(sma_slow_window, hv_slow_window) + 5:
-        raise RuntimeError("Not enough data for trend regime")
-
+def get_trend_regime(start_date: str = '2023-01-01', sma_fast_window: int = 20, sma_slow_window: int = 50, hv_fast_window: int = 20, hv_slow_window: int = 60) -> TrendRegime:
+    try:
+        close = get_close_prices(download_eth_data(start_date=start_date)).dropna()
+    except Exception:
+        return TrendRegime(False, False, False, False, 0, 0, 0, 0)
+    if len(close) < 60:
+        return TrendRegime(False, False, False, False, float(close.iloc[-1]) if len(close) else 0, 0, 0, 0)
     sma_fast = float(close.tail(sma_fast_window).mean())
     sma_slow = float(close.tail(sma_slow_window).mean())
-
     hv_fast = annualized_vol(close, hv_fast_window)
     hv_slow = annualized_vol(close, hv_slow_window)
-
-    bullish = sma_fast > sma_slow
-    bearish = sma_fast < sma_slow
-    volatility_expanding = hv_fast > hv_slow
-
-    hostile = not volatility_expanding
-
-    return TrendRegime(
-        bullish=bullish,
-        bearish=bearish,
-        volatility_expanding=volatility_expanding,
-        hostile=hostile,
-        sma_fast=sma_fast,
-        sma_slow=sma_slow,
-        hv_fast=hv_fast,
-        hv_slow=hv_slow,
-    )
+    return TrendRegime(sma_fast > sma_slow * 1.005, sma_fast < sma_slow * 0.995, hv_fast > hv_slow * 1.05, False, sma_fast, sma_slow, hv_fast, hv_slow)

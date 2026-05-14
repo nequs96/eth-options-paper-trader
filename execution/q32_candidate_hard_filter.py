@@ -1,0 +1,35 @@
+from __future__ import annotations
+import pandas as pd
+from execution.q32_config import Q32ProfitRobustConfig
+from execution.q32_io import load_csv, atomic_csv, num
+
+
+def apply_q32_candidate_filter(input_file: str = 'outputs/live_backtest_candidates_surface_scored.csv', output_file: str = 'outputs/q32_profit_filtered_candidates.csv', rejected_file: str = 'outputs/q32_profit_rejected_candidates.csv', cfg: Q32ProfitRobustConfig | None = None) -> pd.DataFrame:
+    cfg = cfg or Q32ProfitRobustConfig(); df = load_csv(input_file)
+    if df.empty:
+        atomic_csv(output_file, pd.DataFrame()); atomic_csv(rejected_file, pd.DataFrame()); return pd.DataFrame()
+    out = df.copy(); reasons = pd.Series([''] * len(out), index=out.index, dtype=object)
+    def add(mask, reason):
+        nonlocal reasons
+        reasons.loc[mask] = reasons.loc[mask].apply(lambda s: f'{s};{reason}' if s else reason)
+    add(num(out,'days_to_expiry',0) < cfg.min_dte, 'dte_below_q32_min')
+    add(num(out,'days_to_expiry',999) > cfg.max_dte, 'dte_above_q32_max')
+    add(num(out,'abs_moneyness',999) > cfg.max_abs_moneyness, 'abs_moneyness_above_q32_max')
+    add(num(out,'bid_ask_spread_pct',999) > cfg.max_spread, 'spread_above_q32_max')
+    add(num(out,'open_interest',0) < cfg.min_open_interest, 'open_interest_below_q32_min')
+    add(num(out,'volume',0) < cfg.min_volume, 'volume_below_q32_min')
+    add(num(out,'institutional_edge_score',0) < cfg.min_edge_score, 'edge_score_below_q32_min')
+    if 'surface_relative_value_score' in out.columns:
+        add(num(out,'surface_relative_value_score',0) < cfg.min_surface_score, 'surface_score_below_q32_min')
+    if 'classification' in out.columns:
+        add(~out['classification'].astype(str).str.lower().eq('cheap'), 'classification_not_cheap')
+    throttle = load_csv('outputs/q32_call_throttle_state.csv')
+    if not throttle.empty and str(throttle.iloc[-1].get('block_new_calls', False)).lower() in {'true','1'}:
+        add(out.get('option_type', pd.Series('', index=out.index)).astype(str).str.lower().eq('call'), 'q32_call_throttle_active')
+    out['q32_reject_reason'] = reasons
+    accepted = out[out['q32_reject_reason'].eq('')].copy(); rejected = out[~out['q32_reject_reason'].eq('')].copy()
+    atomic_csv(output_file, accepted); atomic_csv(rejected_file, rejected)
+    print(f'Q32 candidate filter accepted={len(accepted)} rejected={len(rejected)}')
+    return accepted
+
+if __name__ == '__main__': apply_q32_candidate_filter()

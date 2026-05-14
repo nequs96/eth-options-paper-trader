@@ -1,0 +1,15 @@
+Q32 conservative paper profile:
+max_open_positions=4
+target_positions=2
+max_new_positions_per_cycle=1
+max_same_expiry_positions=2
+max_same_option_type_positions=3
+max_abs_net_theta=35
+max_flat_7d_loss_abs=250
+max_spread=0.05
+max_abs_moneyness=0.10
+min_edge_score=0.55
+min_surface_score=0.62
+profit_lock_trigger_pct=0.25
+profit_take_partial_pct=0.50
+profit_take_full_pct=0.70

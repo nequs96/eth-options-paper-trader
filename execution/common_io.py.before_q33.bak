@@ -1,0 +1,19 @@
+from __future__ import annotations
+from pathlib import Path
+import pandas as pd
+
+def load_csv(path: str) -> pd.DataFrame:
+    p=Path(path)
+    if not p.exists() or p.stat().st_size==0: return pd.DataFrame()
+    try: return pd.read_csv(p)
+    except pd.errors.EmptyDataError: return pd.DataFrame()
+
+def num(df: pd.DataFrame, col: str, default: float=0.0) -> pd.Series:
+    return pd.to_numeric(df[col], errors='coerce').fillna(default) if col in df.columns else pd.Series([default]*len(df), index=df.index, dtype=float)
+
+def sf(v, d: float=0.0) -> float:
+    try: x=float(v)
+    except Exception: return d
+    return x if pd.notna(x) else d
+
+def ensure_outputs(): Path('outputs').mkdir(exist_ok=True)

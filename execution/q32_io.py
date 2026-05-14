@@ -1,0 +1,40 @@
+from __future__ import annotations
+from pathlib import Path
+import os, tempfile, json
+import pandas as pd
+
+
+def load_csv(path: str) -> pd.DataFrame:
+    p = Path(path)
+    if not p.exists() or p.stat().st_size == 0:
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(p)
+    except Exception:
+        return pd.DataFrame()
+
+
+def atomic_csv(path: str, df: pd.DataFrame) -> None:
+    p = Path(path); p.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=p.name + '.', suffix='.tmp', dir=str(p.parent)); os.close(fd)
+    df.to_csv(tmp, index=False); os.replace(tmp, p)
+
+
+def atomic_json(path: str, payload: dict) -> None:
+    p = Path(path); p.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=p.name + '.', suffix='.tmp', dir=str(p.parent))
+    with os.fdopen(fd, 'w', encoding='utf-8') as f:
+        json.dump(payload, f, indent=2, default=str); f.flush(); os.fsync(f.fileno())
+    os.replace(tmp, p)
+
+
+def append_event(path: str, row: dict) -> pd.DataFrame:
+    old = load_csv(path); new = pd.DataFrame([row])
+    out = new if old.empty else pd.concat([old, new], ignore_index=True)
+    atomic_csv(path, out); return out
+
+
+def num(df: pd.DataFrame, col: str, default: float = 0.0) -> pd.Series:
+    if df is None or df.empty: return pd.Series(dtype=float)
+    if col not in df.columns: return pd.Series([default] * len(df), index=df.index, dtype=float)
+    return pd.to_numeric(df[col], errors='coerce').fillna(default).astype(float)

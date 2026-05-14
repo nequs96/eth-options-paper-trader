@@ -1,2 +1,0 @@
-starting_equity,ending_equity,total_return,annualized_volatility,sharpe_ratio,sortino_ratio,max_drawdown,current_drawdown,best_equity,worst_equity,best_period_return,worst_period_return,equity_points
-10035.766851351877,10247.863183861327,0.021134043431955574,0.31715324836531344,8.15574192515841,0.0,-0.008136546023257307,0.0,10247.863183861327,10000.0,0.024786318386132766,-0.008136546023257307,4

@@ -1,0 +1,42 @@
+from __future__ import annotations
+import pandas as pd
+from execution.q32_config import Q32ProfitRobustConfig
+from execution.q32_io import load_csv, append_event, atomic_csv
+
+
+def evaluate_call_throttle(cfg: Q32ProfitRobustConfig | None = None) -> dict:
+    cfg = cfg or Q32ProfitRobustConfig()
+    hist = load_csv('outputs/paper_trade_history.csv')
+    blocked = False
+    reasons = []
+    loss_rate = 0.0
+    expectancy = 0.0
+
+    if not hist.empty and 'option_type' in hist.columns and 'pnl_pct' in hist.columns:
+        calls = hist[hist['option_type'].astype(str).str.lower().eq('call')].copy()
+        calls['pnl_pct_num'] = pd.to_numeric(calls['pnl_pct'], errors='coerce')
+        recent = calls.dropna(subset=['pnl_pct_num']).tail(cfg.call_loss_window)
+        if len(recent) >= max(3, cfg.call_loss_window // 2):
+            loss_rate = float((recent['pnl_pct_num'] < 0).mean())
+            expectancy = float(recent['pnl_pct_num'].mean())
+            if loss_rate >= cfg.call_loss_rate_block_threshold:
+                reasons.append(f'call_loss_rate_high:{loss_rate:.2f}')
+            if expectancy <= cfg.call_expectancy_block_threshold:
+                reasons.append(f'call_expectancy_negative:{expectancy:.2f}')
+            blocked = bool(reasons)
+
+    row = {
+        'timestamp': pd.Timestamp.utcnow().isoformat(),
+        'block_new_calls': blocked,
+        'call_loss_rate': loss_rate,
+        'call_expectancy': expectancy,
+        'reasons': ';'.join(reasons),
+        'block_hours': cfg.call_block_hours,
+    }
+    atomic_csv('outputs/q32_call_throttle_state.csv', pd.DataFrame([row]))
+    append_event('outputs/q32_call_throttle_log.csv', row)
+    print(f'Q32 call throttle: block_new_calls={blocked} reasons={row["reasons"]}')
+    return row
+
+if __name__ == '__main__':
+    evaluate_call_throttle()

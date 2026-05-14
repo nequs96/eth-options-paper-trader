@@ -1,0 +1,4 @@
+{
+  "note": "Research-suite defaults; modules are additive and safe to run after scheduler cycles.",
+  "max_dashboard_rows": 30
+}

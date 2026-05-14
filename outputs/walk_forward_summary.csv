@@ -1,0 +1,2 @@
+status,tested_parameter_sets,best_quality_score,best_candidate_count,recommended_min_score,recommended_max_spread,recommended_min_dte,recommended_max_abs_moneyness
+ok,144,0.45380795118011324,6,0.5,0.04,10.0,0.18

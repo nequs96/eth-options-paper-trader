@@ -1,0 +1,3 @@
+instrument_name,option_type,strike,days_to_expiry,order_id,created_at,status,side
+ETH-17MAY26-2400-C,call,2400.0,3.946986305960648,PAPER-1,2026-05-13T09:19:05.052948+00:00,filled,buy
+ETH-17MAY26-2425-C,call,2425.0,3.946986305960648,PAPER-2,2026-05-13T09:19:05.052948+00:00,filled,buy

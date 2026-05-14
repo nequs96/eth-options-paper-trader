@@ -1,0 +1,10 @@
+from dataclasses import dataclass
+@dataclass
+class RiskDecision:
+    allowed: bool; position_size: float; risk_amount: float; reason: str; max_loss_allowed: float=0.0; position_notional: float=0.0; risk_reward: float=0.0; daily_drawdown: float=0.0
+def calculate_daily_drawdown(starting_day_equity,current_equity): return 0 if starting_day_equity<=0 else current_equity/starting_day_equity-1
+def calculate_risk_reward(entry_price,stop_loss,take_profit): return 0 if abs(entry_price-stop_loss)==0 else abs(take_profit-entry_price)/abs(entry_price-stop_loss)
+def calculate_position_size(capital,max_risk_per_trade,option_price,contract_multiplier=1.0,allow_fractional_size=True): return 0 if capital<=0 or option_price<=0 else capital*max_risk_per_trade/(option_price*contract_multiplier)
+def approve_trade(capital,option_price,implied_volatility,historical_volatility,max_risk_per_trade=.01,**kwargs):
+    q=calculate_position_size(capital,max_risk_per_trade,option_price); return RiskDecision(q>0,q,q*option_price,'approved' if q>0 else 'zero_size')
+def print_risk_decision(decision): print(decision)

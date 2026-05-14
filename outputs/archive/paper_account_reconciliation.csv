@@ -1,2 +1,0 @@
-timestamp,actual_cash,expected_cash,cash_difference,open_current_value,realized_pnl,unrealized_pnl,equity_estimate,open_positions,reconciliation_ok
-2026-05-09T09:31:35.251877+00:00,9477.34512329157,9441.790727390397,35.55439590117385,0.0,138.79293133900978,0.0,9477.34512329157,7,False

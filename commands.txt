@@ -1,0 +1,16 @@
+to leave overnight: 
+
+mkdir -p logs
+
+caffeinate -dimsu python3 -u -m scripts.run_guarded_overnight 2>&1 | tee -a logs/guarded_overnight.log
+
+then for morning report 
+
+python3 -m scripts.morning_report
+open outputs/morning_report.html
+
+new commends to use 
+
+mkdir -p logs
+
+caffeinate -dimsu python3 -u -m scripts.autonomous_paper_daemon 2>&1 | tee -a logs/autonomous_paper_daemon.log

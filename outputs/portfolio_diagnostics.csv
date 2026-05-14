@@ -1,0 +1,2 @@
+open_positions,open_risk,current_value,unrealized_pnl,open_risk_pct,net_delta,net_gamma,net_vega,net_theta,calls,puts,timestamp
+3,201.4365417941683,191.54904062059825,-9.887501173570055,0.02014365417941683,0.0,0.0,0.0,0.0,2,1,2026-05-13T09:19:05.094889+00:00

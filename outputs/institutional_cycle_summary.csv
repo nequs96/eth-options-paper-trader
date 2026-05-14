@@ -1,0 +1,2 @@
+timestamp,option_snapshot_id,candidate_rows_recorded,filtered_rows_recorded,account_snapshot_id,position_rows_recorded,option_chain_rows,raw_candidates,filtered_candidates,open_positions,estimated_equity,total_return,option_chain_quality,candidate_quality
+2026-05-13T09:19:05.059552+00:00,1,152,66,1,3,152,66,63,3,9575.208633089374,-0.04247913669106251,0.8355263157894737,1.0

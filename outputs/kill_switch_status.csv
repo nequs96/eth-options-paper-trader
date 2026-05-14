@@ -1,0 +1,2 @@
+timestamp,kill_switch_active,reason
+2026-05-14T06:48:10.627068+00:00,True,q32_loss_control:total_drawdown_abs_exceeded:-449.87

@@ -1,0 +1,3839 @@
+
+========== Q32 GUARDED PAPER LOOP cycle=1 ==========
+Kill switch active=True
+Q32 loss control: HALT_NEW_ENTRIES realized_loss_abs_exceeded:-443.17
+Q32 call throttle: block_new_calls=True reasons=call_loss_rate_high:1.00;call_expectancy_negative:-0.41
+
+========== GUARDED PAPER CYCLE =========
+No open paper positions.
+Reconciliation: ok | cash=$9,215.97 | equity=$9,215.97 | open=0
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1321, in do_open
+    h.request(req.get_method(), req.selector, req.data, headers,
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              encode_chunked=req.has_header('Transfer-encoding'))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1338, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1384, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1333, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1093, in _send_output
+    self.send(msg)
+    ~~~~~~~~~^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1037, in send
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1479, in connect
+    self.sock = self._context.wrap_socket(self.sock,
+                ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+                                          server_hostname=server_hostname)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/ssl.py", line 455, in wrap_socket
+    return self.sslsocket_class._create(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sock=sock,
+        ^^^^^^^^^^
+    ...<5 lines>...
+        session=session
+        ^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/ssl.py", line 1076, in _create
+    self.do_handshake()
+    ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/ssl.py", line 1372, in do_handshake
+    self._sslobj.do_handshake()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1077)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/scripts/run_q32_guarded_paper_loop.py", line 29, in run_q32_loop
+    run_guarded_cycle(open_when_allowed=open_allowed)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/scripts/run_guarded_overnight.py", line 23, in run_guarded_cycle
+    run_live_option_paper_backtest(LiveOptionBacktestConfig(max_option_chain_instruments=max_option_chain_instruments, ticker_timeout_seconds=5, option_chain_progress_every=25))
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/backtesting/live_option_backtest_engine.py", line 170, in run_live_option_paper_backtest
+    chain = get_or_refresh_live_option_chain(config)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/backtesting/live_option_backtest_engine.py", line 65, in get_or_refresh_live_option_chain
+    chain = build_live_eth_option_chain(DeribitConfig(timeout=config.ticker_timeout_seconds), max_instruments=config.max_option_chain_instruments, progress_every=config.option_chain_progress_every, save_partial_path=partial, min_days_to_expiry=config.min_days_to_expiry, max_days_to_expiry=max(config.max_days_to_expiry, 60.0), max_abs_moneyness=config.scanner_max_abs_moneyness)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 95, in build_live_eth_option_chain
+    instruments = fetch_deribit_instruments(config)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 30, in fetch_deribit_instruments
+    return _get_json(f'{config.base_url}/public/get_instruments?{query}', config.timeout).get('result', [])
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 23, in _get_json
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 187, in urlopen
+    return opener.open(url, data, timeout)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 487, in open
+    response = self._open(req, data)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 504, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+                              '_open', req)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1369, in https_open
+    return self.do_open(http.client.HTTPSConnection, req,
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        context=self._context)
+                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1324, in do_open
+    raise URLError(err)
+urllib.error.URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1077)>
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=1 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+No open paper positions.
+Reconciliation: ok  equity=10,000.00  open=0
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1321, in do_open
+    h.request(req.get_method(), req.selector, req.data, headers,
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              encode_chunked=req.has_header('Transfer-encoding'))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1338, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1384, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1333, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1093, in _send_output
+    self.send(msg)
+    ~~~~~~~~~^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1037, in send
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1479, in connect
+    self.sock = self._context.wrap_socket(self.sock,
+                ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+                                          server_hostname=server_hostname)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/ssl.py", line 455, in wrap_socket
+    return self.sslsocket_class._create(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sock=sock,
+        ^^^^^^^^^^
+    ...<5 lines>...
+        session=session
+        ^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/ssl.py", line 1076, in _create
+    self.do_handshake()
+    ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/ssl.py", line 1372, in do_handshake
+    self._sslobj.do_handshake()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1077)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/scripts/run_q32_guarded_paper_loop.py", line 29, in run_q32_loop
+    run_guarded_cycle(open_when_allowed=open_allowed)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/scripts/run_guarded_overnight.py", line 23, in run_guarded_cycle
+    run_live_option_paper_backtest(LiveOptionBacktestConfig(max_option_chain_instruments=max_option_chain_instruments, ticker_timeout_seconds=5, option_chain_progress_every=25))
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/backtesting/live_option_backtest_engine.py", line 170, in run_live_option_paper_backtest
+    chain = get_or_refresh_live_option_chain(config)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/backtesting/live_option_backtest_engine.py", line 65, in get_or_refresh_live_option_chain
+    chain = build_live_eth_option_chain(DeribitConfig(timeout=config.ticker_timeout_seconds), max_instruments=config.max_option_chain_instruments, progress_every=config.option_chain_progress_every, save_partial_path=partial, min_days_to_expiry=config.min_days_to_expiry, max_days_to_expiry=max(config.max_days_to_expiry, 60.0), max_abs_moneyness=config.scanner_max_abs_moneyness)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 95, in build_live_eth_option_chain
+    instruments = fetch_deribit_instruments(config)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 30, in fetch_deribit_instruments
+    return _get_json(f'{config.base_url}/public/get_instruments?{query}', config.timeout).get('result', [])
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 23, in _get_json
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 187, in urlopen
+    return opener.open(url, data, timeout)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 487, in open
+    response = self._open(req, data)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 504, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+                              '_open', req)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1369, in https_open
+    return self.do_open(http.client.HTTPSConnection, req,
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        context=self._context)
+                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1324, in do_open
+    raise URLError(err)
+urllib.error.URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1077)>
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=1 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+No open paper positions.
+Reconciliation: ok  equity=10,000.00  open=0
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,280.47
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=24s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=15s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=6s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       72
+Cheap options accepted:   72
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     57
+market_price_below_minimum     20
+           spread_too_wide      5
+====================================================
+Professional filter accepted=68 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=68 rejected=4
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=50 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Opened 2 new paper position(s).
+Reconciliation: ok  equity=10,000.00  open=2
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,867.29
+Open position value:    $132.71
+Open risk/cost basis:   $132.71
+Unrealized PnL:         $0.00
+Estimated equity:       $10,000.00
+Total return:           0.00%
+Open positions:         2
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value PnL $ PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.359693  $85.06  $85.06 0.791345 $67.31 $67.31 $0.00 0.00%   open
+ETH-29MAY26-2300-P  put  2300.0 16.359693 $101.94 $101.94 0.641587 $65.40 $65.40 $0.00 0.00%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $10,000.00
+Total return: 0.00%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: 0.0000
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=67
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=2 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=2, Closed=0, Cash=$9,867.29, Open value=$132.71, Unrealized PnL=$0.00, Realized this cycle=$0.00
+Reconciliation: ok  equity=10,000.00  open=2
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,278.39
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=23s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       71
+Cheap options accepted:   71
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     57
+market_price_below_minimum     21
+           spread_too_wide      5
+====================================================
+Professional filter accepted=67 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=67 rejected=4
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=48 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+No candidates passed dynamic portfolio allocation.
+Reconciliation: ok  equity=10,000.00  open=2
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,867.29
+Open position value:    $132.71
+Open risk/cost basis:   $132.71
+Unrealized PnL:         $0.00
+Estimated equity:       $10,000.00
+Total return:           0.00%
+Open positions:         2
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value PnL $ PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.359693  $85.06  $85.06 0.791345 $67.31 $67.31 $0.00 0.00%   open
+ETH-29MAY26-2300-P  put  2300.0 16.359693 $101.94 $101.94 0.641587 $65.40 $65.40 $0.00 0.00%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $10,000.00
+Total return: 0.00%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: 0.0000
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=2 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=3 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=2, Closed=0, Cash=$9,867.29, Open value=$132.72, Unrealized PnL=$0.00, Realized this cycle=$0.00
+Reconciliation: ok  equity=10,000.00  open=2
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,274.79
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=23s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=16s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=11s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=6s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       69
+Cheap options accepted:   69
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     56
+market_price_below_minimum     22
+           spread_too_wide      7
+====================================================
+Professional filter accepted=65 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=66 rejected=3
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=44 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+No candidates passed dynamic portfolio allocation.
+Reconciliation: ok  equity=10,000.00  open=2
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,867.29
+Open position value:    $132.72
+Open risk/cost basis:   $132.71
+Unrealized PnL:         $0.00
+Estimated equity:       $10,000.00
+Total return:           0.00%
+Open positions:         2
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.348898  $85.06  $83.84 0.791345 $67.31 $66.35 $-0.96 -1.43%   open
+ETH-29MAY26-2300-P  put  2300.0 16.348898 $101.94 $103.44 0.641587 $65.40 $66.37  $0.96  1.47%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $10,000.00
+Total return: 0.00%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: 13.5093
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=3 rejected=63
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=4 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=2, Closed=0, Cash=$9,867.29, Open value=$132.70, Unrealized PnL=$-0.01, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,999.99  open=2
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,277.51
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=23s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=18s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.80%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       70
+Cheap options accepted:   70
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     55
+market_price_below_minimum     21
+           spread_too_wide      8
+====================================================
+Professional filter accepted=66 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=67 rejected=3
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=45 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+No candidates passed dynamic portfolio allocation.
+Reconciliation: ok  equity=9,999.99  open=2
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,867.29
+Open position value:    $132.70
+Open risk/cost basis:   $132.71
+Unrealized PnL:         $-0.01
+Estimated equity:       $9,999.99
+Total return:           -0.00%
+Open positions:         2
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.338139  $85.06  $82.12 0.791345 $67.31 $64.99 $-2.33 -3.46%   open
+ETH-29MAY26-2300-P  put  2300.0 16.338139 $101.94 $105.55 0.641587 $65.40 $67.72  $2.32  3.54%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,999.99
+Total return: -0.00%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -9.9199
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=2 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=5 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=2, Closed=0, Cash=$9,867.29, Open value=$132.45, Unrealized PnL=$-0.26, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,999.74  open=2
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,285.40
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=23s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       73
+Cheap options accepted:   73
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     53
+market_price_below_minimum     20
+           spread_too_wide      8
+====================================================
+Professional filter accepted=68 rejected=5
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=68 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=49 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+No candidates passed dynamic portfolio allocation.
+Reconciliation: ok  equity=9,999.74  open=2
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,867.29
+Open position value:    $132.45
+Open risk/cost basis:   $132.71
+Unrealized PnL:         $-0.26
+Estimated equity:       $9,999.74
+Total return:           -0.00%
+Open positions:         2
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.327346  $85.06  $83.36 0.791345 $67.31 $65.96 $-1.35 -2.00%   open
+ETH-29MAY26-2300-P  put  2300.0 16.327346 $101.94 $103.63 0.641587 $65.40 $66.49  $1.08  1.66%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,999.74
+Total return: -0.00%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -10.0304
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=2 rejected=66
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=6 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=2, Closed=0, Cash=$9,867.29, Open value=$132.91, Unrealized PnL=$0.20, Realized this cycle=$0.00
+Reconciliation: ok  equity=10,000.20  open=2
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,284.32
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=23s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       73
+Cheap options accepted:   73
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     54
+market_price_below_minimum     20
+           spread_too_wide      7
+====================================================
+Professional filter accepted=68 rejected=5
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=68 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=48 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+No candidates passed dynamic portfolio allocation.
+Reconciliation: ok  equity=10,000.20  open=2
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,867.29
+Open position value:    $132.91
+Open risk/cost basis:   $132.71
+Unrealized PnL:         $0.20
+Estimated equity:       $10,000.20
+Total return:           0.00%
+Open positions:         2
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.316587  $85.06  $86.62 0.791345 $67.31 $68.54  $1.23  1.83%   open
+ETH-29MAY26-2300-P  put  2300.0 16.316587 $101.94 $100.33 0.641587 $65.40 $64.37 $-1.03 -1.58%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $10,000.20
+Total return: 0.00%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: 2.9132
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=67
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=7 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=2, Closed=0, Cash=$9,867.29, Open value=$132.92, Unrealized PnL=$0.20, Realized this cycle=$0.00
+Reconciliation: ok  equity=10,000.20  open=2
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,282.00
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=24s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       73
+Cheap options accepted:   73
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     54
+market_price_below_minimum     20
+           spread_too_wide      7
+====================================================
+Professional filter accepted=68 rejected=5
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=68 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=48 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+No candidates passed dynamic portfolio allocation.
+Reconciliation: ok  equity=10,000.20  open=2
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,867.29
+Open position value:    $132.92
+Open risk/cost basis:   $132.71
+Unrealized PnL:         $0.20
+Estimated equity:       $10,000.20
+Total return:           0.00%
+Open positions:         2
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike      DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.30583  $85.06  $87.03 0.791345 $67.31 $68.87  $1.56  2.32%   open
+ETH-29MAY26-2300-P  put  2300.0 16.30583 $101.94  $99.82 0.641587 $65.40 $64.05 $-1.36 -2.07%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $10,000.20
+Total return: 0.00%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: 2.7857
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=67
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=8 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=2, Closed=0, Cash=$9,867.29, Open value=$133.05, Unrealized PnL=$0.34, Realized this cycle=$0.00
+Reconciliation: ok  equity=10,000.34  open=2
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,286.19
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=23s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       72
+Cheap options accepted:   72
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     55
+market_price_below_minimum     20
+           spread_too_wide      7
+====================================================
+Professional filter accepted=68 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=68 rejected=4
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=50 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+No candidates passed dynamic portfolio allocation.
+Reconciliation: ok  equity=10,000.34  open=2
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,867.29
+Open position value:    $133.05
+Open risk/cost basis:   $132.71
+Unrealized PnL:         $0.34
+Estimated equity:       $10,000.34
+Total return:           0.00%
+Open positions:         2
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.295066  $85.06  $85.80 0.791345 $67.31 $67.90  $0.59  0.87%   open
+ETH-29MAY26-2300-P  put  2300.0 16.295066 $101.94 $101.55 0.641587 $65.40 $65.15 $-0.25 -0.38%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $10,000.34
+Total return: 0.00%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: 4.2551
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=68
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=9 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=2, Closed=0, Cash=$9,867.29, Open value=$133.28, Unrealized PnL=$0.56, Realized this cycle=$0.00
+Reconciliation: ok  equity=10,000.56  open=2
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,291.22
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=23s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       70
+Cheap options accepted:   70
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     55
+market_price_below_minimum     20
+           spread_too_wide      9
+====================================================
+Professional filter accepted=66 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=65 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=46 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Opened 1 new paper position(s).
+Reconciliation: ok  equity=10,000.56  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,796.90
+Open position value:    $203.66
+Open risk/cost basis:   $203.10
+Unrealized PnL:         $0.56
+Estimated equity:       $10,000.56
+Total return:           0.01%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2350-C call  2350.0 16.273538  $68.28  $68.28 1.030827 $70.38 $70.38  $0.00  0.00%   open
+ETH-29MAY26-2300-C call  2300.0 16.284301  $85.06  $87.79 0.791345 $67.31 $69.47  $2.16  3.21%   open
+ETH-29MAY26-2300-P  put  2300.0 16.284301 $101.94  $99.45 0.641587 $65.40 $63.81 $-1.60 -2.44%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $10,000.56
+Total return: 0.01%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: 6.3946
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=64
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=10 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,796.90, Open value=$204.00, Unrealized PnL=$0.91, Realized this cycle=$0.00
+Reconciliation: ok  equity=10,000.91  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,291.76
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=23s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       71
+Cheap options accepted:   71
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     55
+market_price_below_minimum     20
+           spread_too_wide      8
+====================================================
+Professional filter accepted=66 rejected=5
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=65 rejected=6
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=47 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+No candidates passed dynamic portfolio allocation.
+Reconciliation: ok  equity=10,000.91  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,796.90
+Open position value:    $204.00
+Open risk/cost basis:   $203.10
+Unrealized PnL:         $0.91
+Estimated equity:       $10,000.91
+Total return:           0.01%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.273538  $85.06  $90.27 0.791345 $67.31 $71.44  $4.12  6.13%   open
+ETH-29MAY26-2300-P  put  2300.0 16.273538 $101.94  $96.92 0.641587 $65.40 $62.18 $-3.22 -4.92%   open
+ETH-29MAY26-2350-C call  2350.0 16.273538  $68.28  $68.28 1.030827 $70.38 $70.38  $0.00  0.00%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $10,000.91
+Total return: 0.01%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: 8.8746
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=64
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=11 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,796.90, Open value=$203.97, Unrealized PnL=$0.87, Realized this cycle=$0.00
+Reconciliation: ok  equity=10,000.87  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,290.09
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=24s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       70
+Cheap options accepted:   70
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     58
+market_price_below_minimum     20
+           spread_too_wide      6
+====================================================
+Professional filter accepted=66 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=65 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=47 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Opened 1 new paper position(s).
+Reconciliation: ok  equity=10,000.87  open=4
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,722.86
+Open position value:    $278.01
+Open risk/cost basis:   $277.14
+Unrealized PnL:         $0.87
+Estimated equity:       $10,000.87
+Total return:           0.01%
+Open positions:         4
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2400-C call  2400.0 16.252012  $50.38  $50.38 1.469636 $74.04 $74.04  $0.00  0.00%   open
+ETH-29MAY26-2300-C call  2300.0 16.262779  $85.06  $90.52 0.791345 $67.31 $71.64  $4.32  6.42%   open
+ETH-29MAY26-2300-P  put  2300.0 16.262779 $101.94  $95.80 0.641587 $65.40 $61.46 $-3.94 -6.02%   open
+ETH-29MAY26-2350-C call  2350.0 16.262779  $68.28  $68.75 1.030827 $70.38 $70.87  $0.49  0.69%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $10,000.87
+Total return: 0.01%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: 7.9905
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=64
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=12 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=4, Closed=0, Cash=$9,722.86, Open value=$276.30, Unrealized PnL=$-0.84, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,999.16  open=4
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,290.46
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=24s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       71
+Cheap options accepted:   71
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     58
+market_price_below_minimum     20
+           spread_too_wide      5
+====================================================
+Professional filter accepted=67 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=67 rejected=4
+Portfolio risk-limit check complete. status=BREACH breaches=1
+Portfolio optimizer complete. selected=2 rejected=50 status=ok
+Scheduler risk guard: allow_new_entries=False reasons=portfolio_risk_breach
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,999.16  open=4
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,722.86
+Open position value:    $276.30
+Open risk/cost basis:   $277.14
+Unrealized PnL:         $-0.84
+Estimated equity:       $9,999.16
+Total return:           -0.01%
+Open positions:         4
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.252012  $85.06  $88.86 0.791345 $67.31 $70.32  $3.00  4.46%   open
+ETH-29MAY26-2300-P  put  2300.0 16.252012 $101.94  $97.10 0.641587 $65.40 $62.30 $-3.10 -4.75%   open
+ETH-29MAY26-2350-C call  2350.0 16.252012  $68.28  $67.56 1.030827 $70.38 $69.64 $-0.74 -1.06%   open
+ETH-29MAY26-2400-C call  2400.0 16.252012  $50.38  $50.38 1.469636 $74.04 $74.04  $0.00  0.00%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,999.16
+Total return: -0.01%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -2.5338
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=67
+Q32 profit lock actions=0
+Q32 forced derisk actions=2
+Q32 forced derisk executed closes=2
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=13 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=2, Closed=0, Cash=$9,722.86, Open value=$136.41, Unrealized PnL=$-3.04, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,859.27  open=2
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,294.16
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=23s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       67
+Cheap options accepted:   67
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     58
+market_price_below_minimum     21
+           spread_too_wide      8
+====================================================
+Professional filter accepted=66 rejected=1
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=65 rejected=2
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=46 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Opened 1 new paper position(s).
+Reconciliation: ok  equity=9,859.27  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,656.83
+Open position value:    $202.43
+Open risk/cost basis:   $205.47
+Unrealized PnL:         $-3.04
+Estimated equity:       $9,859.27
+Total return:           -1.41%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.230485  $91.31  $91.31 0.723135 $66.03 $66.03  $0.00  0.00%   open
+ETH-29MAY26-2300-P  put  2300.0 16.241246 $101.94  $96.66 0.641587 $65.40 $62.01 $-3.39 -5.18%   open
+ETH-29MAY26-2400-C call  2400.0 16.241246  $50.38  $50.62 1.469636 $74.04 $74.39  $0.35  0.47%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,859.27
+Total return: -1.41%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -5.5509
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=2 rejected=63
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=14 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,656.83, Open value=$203.16, Unrealized PnL=$-2.31, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,859.99  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,294.59
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=23s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       70
+Cheap options accepted:   70
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     57
+market_price_below_minimum     21
+           spread_too_wide      6
+====================================================
+Professional filter accepted=66 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=65 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=48 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Opened 1 new paper position(s).
+Reconciliation: ok  equity=9,859.99  open=4
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,586.26
+Open position value:    $273.73
+Open risk/cost basis:   $276.04
+Unrealized PnL:         $-2.31
+Estimated equity:       $9,859.99
+Total return:           -1.40%
+Open positions:         4
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2350-C call  2350.0 16.219716  $69.30  $69.30 1.018329 $70.57 $70.57  $0.00  0.00%   open
+ETH-29MAY26-2300-C call  2300.0 16.230485  $91.31  $91.31 0.723135 $66.03 $66.03  $0.00  0.00%   open
+ETH-29MAY26-2300-P  put  2300.0 16.230485 $101.94  $94.98 0.641587 $65.40 $60.94 $-4.46 -6.83%   open
+ETH-29MAY26-2400-C call  2400.0 16.230485  $50.38  $51.85 1.469636 $74.04 $76.20  $2.15  2.91%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,859.99
+Total return: -1.40%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -5.3025
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=15 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=4, Closed=0, Cash=$9,586.26, Open value=$273.77, Unrealized PnL=$-2.27, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,860.03  open=4
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,293.31
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=38s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=25s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=17s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=11s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=6s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       70
+Cheap options accepted:   70
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     55
+market_price_below_minimum     21
+           spread_too_wide      8
+====================================================
+Professional filter accepted=66 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=66 rejected=4
+Portfolio risk-limit check complete. status=BREACH breaches=1
+Portfolio optimizer complete. selected=2 rejected=49 status=ok
+Scheduler risk guard: allow_new_entries=False reasons=portfolio_risk_breach
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,860.03  open=4
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,586.26
+Open position value:    $273.77
+Open risk/cost basis:   $276.04
+Unrealized PnL:         $-2.27
+Estimated equity:       $9,860.03
+Total return:           -1.40%
+Open positions:         4
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.219716  $91.31  $91.32 0.723135 $66.03 $66.04  $0.01  0.02%   open
+ETH-29MAY26-2300-P  put  2300.0 16.219716 $101.94  $95.00 0.641587 $65.40 $60.95 $-4.45 -6.81%   open
+ETH-29MAY26-2350-C call  2350.0 16.219716  $69.30  $69.30 1.018329 $70.57 $70.57  $0.00  0.00%   open
+ETH-29MAY26-2400-C call  2400.0 16.219716  $50.38  $51.86 1.469636 $74.04 $76.21  $2.17  2.93%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,860.03
+Total return: -1.40%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -5.1081
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=65
+Q32 profit lock actions=0
+Q32 forced derisk actions=2
+Q32 forced derisk executed closes=2
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=16 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=True reasons=call_loss_rate_high:0.75
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=2, Closed=0, Cash=$9,586.26, Open value=$136.56, Unrealized PnL=$-2.89, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,722.82  open=2
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,293.23
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=24s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=19s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=14s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=5s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       70
+Cheap options accepted:   70
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     54
+market_price_below_minimum     21
+           spread_too_wide      9
+====================================================
+Professional filter accepted=66 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=66 rejected=4
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=48 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Opened 1 new paper position(s).
+Reconciliation: ok  equity=9,722.82  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,519.69
+Open position value:    $203.13
+Open risk/cost basis:   $206.01
+Unrealized PnL:         $-2.89
+Estimated equity:       $9,722.82
+Total return:           -2.77%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.198164  $90.58  $90.58 0.734910 $66.57 $66.57  $0.00  0.00%   open
+ETH-29MAY26-2300-P  put  2300.0 16.208955 $101.94  $95.17 0.641587 $65.40 $61.06 $-4.34 -6.64%   open
+ETH-29MAY26-2400-C call  2400.0 16.208955  $50.38  $51.37 1.469636 $74.04 $75.50  $1.45  1.96%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,722.82
+Total return: -2.77%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -7.2410
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=66
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=17 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=True reasons=call_loss_rate_high:0.75
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,519.69, Open value=$202.93, Unrealized PnL=$-3.08, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,722.63  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,297.51
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=24s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=19s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=15s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=6s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       71
+Cheap options accepted:   71
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     57
+market_price_below_minimum     21
+           spread_too_wide      7
+====================================================
+Professional filter accepted=67 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=67 rejected=4
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=47 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+No candidates passed dynamic portfolio allocation.
+Reconciliation: ok  equity=9,722.63  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,519.69
+Open position value:    $202.93
+Open risk/cost basis:   $206.01
+Unrealized PnL:         $-3.08
+Estimated equity:       $9,722.63
+Total return:           -2.77%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.198164  $90.58  $90.58 0.734910 $66.57 $66.57  $0.00  0.00%   open
+ETH-29MAY26-2300-P  put  2300.0 16.198164 $101.94  $95.40 0.641587 $65.40 $61.21 $-4.20 -6.41%   open
+ETH-29MAY26-2400-C call  2400.0 16.198164  $50.38  $51.14 1.469636 $74.04 $75.16  $1.11  1.50%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,722.63
+Total return: -2.77%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.9989
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=67
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=18 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=True reasons=call_loss_rate_high:0.75
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,519.69, Open value=$204.73, Unrealized PnL=$-1.29, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,724.42  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,302.08
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=24s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=20s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=15s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=6s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.78%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       67
+Cheap options accepted:   67
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     50
+market_price_below_minimum     21
+           spread_too_wide     18
+====================================================
+Professional filter accepted=65 rejected=2
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=65 rejected=2
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=47 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+No candidates passed dynamic portfolio allocation.
+Reconciliation: ok  equity=9,724.42  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,519.69
+Open position value:    $204.73
+Open risk/cost basis:   $206.01
+Unrealized PnL:         $-1.29
+Estimated equity:       $9,724.42
+Total return:           -2.76%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.187394  $90.58  $92.59 0.734910 $66.57 $68.05  $1.48  2.22%   open
+ETH-29MAY26-2300-P  put  2300.0 16.187394 $101.94  $93.05 0.641587 $65.40 $59.70 $-5.70 -8.72%   open
+ETH-29MAY26-2400-C call  2400.0 16.187394  $50.38  $52.38 1.469636 $74.04 $76.98  $2.94  3.97%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,724.42
+Total return: -2.76%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.7237
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=19 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=True reasons=call_loss_rate_high:0.75
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,519.69, Open value=$207.40, Unrealized PnL=$1.39, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,727.10  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,301.89
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=24s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=20s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=15s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=6s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.78%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       71
+Cheap options accepted:   71
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     54
+market_price_below_minimum     21
+           spread_too_wide     10
+====================================================
+Professional filter accepted=66 rejected=5
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=65 rejected=6
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=45 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Opened 1 new paper position(s).
+Reconciliation: ok  equity=9,727.10  open=4
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,448.87
+Open position value:    $278.23
+Open risk/cost basis:   $276.84
+Unrealized PnL:         $1.39
+Estimated equity:       $9,727.10
+Total return:           -2.73%
+Open positions:         4
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $   PnL % Status
+ETH-29MAY26-2350-C call  2350.0 16.165844  $72.05  $72.05 0.983062 $70.83 $70.83  $0.00   0.00%   open
+ETH-29MAY26-2300-C call  2300.0 16.176620  $90.58  $94.85 0.734910 $66.57 $69.70  $3.13   4.71%   open
+ETH-29MAY26-2300-P  put  2300.0 16.176620 $101.94  $90.70 0.641587 $65.40 $58.19 $-7.21 -11.02%   open
+ETH-29MAY26-2400-C call  2400.0 16.176620  $50.38  $54.10 1.469636 $74.04 $79.51  $5.46   7.38%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,727.10
+Total return: -2.73%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.4486
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=20 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=True reasons=call_loss_rate_high:0.75
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=4, Closed=0, Cash=$9,448.87, Open value=$277.54, Unrealized PnL=$0.69, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,726.40  open=4
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,299.07
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=25s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=20s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=15s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=6s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       71
+Cheap options accepted:   71
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     58
+market_price_below_minimum     21
+           spread_too_wide      6
+====================================================
+Professional filter accepted=66 rejected=5
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=66 rejected=5
+Portfolio risk-limit check complete. status=BREACH breaches=1
+Portfolio optimizer complete. selected=2 rejected=46 status=ok
+Scheduler risk guard: allow_new_entries=False reasons=portfolio_risk_breach
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,726.40  open=4
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,448.87
+Open position value:    $277.54
+Open risk/cost basis:   $276.84
+Unrealized PnL:         $0.69
+Estimated equity:       $9,726.40
+Total return:           -2.74%
+Open positions:         4
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.165844  $90.58  $94.38 0.734910 $66.57 $69.36  $2.79   4.19%   open
+ETH-29MAY26-2300-P  put  2300.0 16.165844 $101.94  $90.69 0.641587 $65.40 $58.19 $-7.21 -11.03%   open
+ETH-29MAY26-2350-C call  2350.0 16.165844  $72.05  $72.05 0.983062 $70.83 $70.83  $0.00   0.00%   open
+ETH-29MAY26-2400-C call  2400.0 16.165844  $50.38  $53.86 1.469636 $74.04 $79.16  $5.12   6.91%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,726.40
+Total return: -2.74%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.2846
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=66
+Q32 profit lock actions=0
+Q32 forced derisk actions=2
+Q32 forced derisk executed closes=2
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=21 ==========
+Q32 loss control: ALLOW 
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=2, Closed=0, Cash=$9,448.87, Open value=$128.76, Unrealized PnL=$-7.47, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,577.63  open=2
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,306.18
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=24s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=20s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=15s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=6s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.78%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       72
+Cheap options accepted:   72
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     45
+market_price_below_minimum     21
+           spread_too_wide     18
+====================================================
+Professional filter accepted=66 rejected=6
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=67 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=47 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Opened 1 new paper position(s).
+Reconciliation: ok  equity=9,577.63  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $193.97
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-7.47
+Estimated equity:       $9,577.63
+Total return:           -4.22%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.144289  $97.32  $97.32 0.670014 $65.21 $65.21  $0.00  0.00%   open
+ETH-29MAY26-2300-P  put  2300.0 16.155066 $101.94  $92.19 0.641587 $65.40 $59.15 $-6.25 -9.56%   open
+ETH-29MAY26-2350-C call  2350.0 16.155066  $72.05  $70.81 0.983062 $70.83 $69.61 $-1.22 -1.72%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,577.63
+Total return: -4.22%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -7.7357
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=2 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=22 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-422.37
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-422.37
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$194.88, Unrealized PnL=$-6.56, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,578.54  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,303.86
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=24s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=20s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=15s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=11s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=6s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.78%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       72
+Cheap options accepted:   72
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     45
+market_price_below_minimum     22
+           spread_too_wide     17
+====================================================
+Professional filter accepted=66 rejected=6
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=67 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=50 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,578.54  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $194.88
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-6.56
+Estimated equity:       $9,578.54
+Total return:           -4.21%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.144289  $97.32  $97.32 0.670014 $65.21 $65.21  $0.00   0.00%   open
+ETH-29MAY26-2300-P  put  2300.0 16.144289 $101.94  $88.33 0.641587 $65.40 $56.67 $-8.73 -13.35%   open
+ETH-29MAY26-2350-C call  2350.0 16.144289  $72.05  $74.26 0.983062 $70.83 $73.00  $2.17   3.07%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,578.54
+Total return: -4.21%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -7.5084
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=2 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=23 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-421.46
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-421.46
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$193.51, Unrealized PnL=$-7.93, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,577.17  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,305.52
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=25s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=20s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=15s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=11s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=6s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.78%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       71
+Cheap options accepted:   71
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     46
+market_price_below_minimum     22
+           spread_too_wide     17
+====================================================
+Professional filter accepted=65 rejected=6
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=65 rejected=6
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=45 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,577.17  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $193.51
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-7.93
+Estimated equity:       $9,577.17
+Total return:           -4.23%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.133513  $97.32  $95.84 0.670014 $65.21 $64.21 $-0.99  -1.52%   open
+ETH-29MAY26-2300-P  put  2300.0 16.133513 $101.94  $89.62 0.641587 $65.40 $57.50 $-7.90 -12.08%   open
+ETH-29MAY26-2350-C call  2350.0 16.133513  $72.05  $73.03 0.983062 $70.83 $71.80  $0.97   1.36%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,577.17
+Total return: -4.23%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -7.3453
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=4 rejected=61
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=24 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-422.83
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-422.83
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$193.97, Unrealized PnL=$-7.47, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,577.63  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,300.86
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=25s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=20s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=16s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=11s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=6s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.78%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       71
+Cheap options accepted:   71
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     48
+market_price_below_minimum     21
+           spread_too_wide     16
+====================================================
+Professional filter accepted=65 rejected=6
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=66 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=46 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,577.63  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $193.97
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-7.47
+Estimated equity:       $9,577.63
+Total return:           -4.22%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.122724  $97.32  $96.37 0.670014 $65.21 $64.57 $-0.64  -0.98%   open
+ETH-29MAY26-2300-P  put  2300.0 16.122724 $101.94  $88.99 0.641587 $65.40 $57.10 $-8.30 -12.70%   open
+ETH-29MAY26-2350-C call  2350.0 16.122724  $72.05  $73.55 0.983062 $70.83 $72.30  $1.47   2.08%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,577.63
+Total return: -4.22%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -7.1580
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=2 rejected=64
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=25 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-422.37
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-422.37
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$191.17, Unrealized PnL=$-10.26, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,574.83  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,300.59
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=25s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=20s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=15s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=11s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=6s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       71
+Cheap options accepted:   71
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     47
+market_price_below_minimum     21
+           spread_too_wide     17
+====================================================
+Professional filter accepted=65 rejected=6
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=66 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=47 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,574.83  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $191.17
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-10.26
+Estimated equity:       $9,574.83
+Total return:           -4.25%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.111936  $97.32  $93.65 0.670014 $65.21 $62.74 $-2.46  -3.78%   open
+ETH-29MAY26-2300-P  put  2300.0 16.111936 $101.94  $90.88 0.641587 $65.40 $58.31 $-7.09 -10.84%   open
+ETH-29MAY26-2350-C call  2350.0 16.111936  $72.05  $71.33 0.983062 $70.83 $70.12 $-0.71  -1.00%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,574.83
+Total return: -4.25%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -7.0464
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=2 rejected=64
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=26 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-425.17
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-425.17
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$190.68, Unrealized PnL=$-10.75, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,574.34  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,298.77
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=26s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=20s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=17s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=11s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=6s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       72
+Cheap options accepted:   72
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     48
+market_price_below_minimum     21
+           spread_too_wide     15
+====================================================
+Professional filter accepted=69 rejected=3
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=69 rejected=3
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=52 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,574.34  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $190.68
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-10.75
+Estimated equity:       $9,574.34
+Total return:           -4.26%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.101145  $97.32  $93.17 0.670014 $65.21 $62.43 $-2.78  -4.26%   open
+ETH-29MAY26-2300-P  put  2300.0 16.101145 $101.94  $91.33 0.641587 $65.40 $58.60 $-6.80 -10.40%   open
+ETH-29MAY26-2350-C call  2350.0 16.101145  $72.05  $70.86 0.983062 $70.83 $69.66 $-1.17  -1.65%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,574.34
+Total return: -4.26%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.8997
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=68
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=27 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-425.66
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-425.66
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$190.22, Unrealized PnL=$-11.22, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,573.88  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,300.03
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=24s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=19s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=15s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=6s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.79%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       72
+Cheap options accepted:   72
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     59
+market_price_below_minimum     21
+           spread_too_wide      4
+====================================================
+Professional filter accepted=68 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=68 rejected=4
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=51 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,573.88  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $190.22
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-11.22
+Estimated equity:       $9,573.88
+Total return:           -4.26%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.090356  $97.32  $92.64 0.670014 $65.21 $62.07 $-3.14 -4.81%   open
+ETH-29MAY26-2300-P  put  2300.0 16.090356 $101.94  $91.95 0.641587 $65.40 $58.99 $-6.41 -9.80%   open
+ETH-29MAY26-2350-C call  2350.0 16.090356  $72.05  $70.34 0.983062 $70.83 $69.15 $-1.68 -2.37%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,573.88
+Total return: -4.26%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.7621
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=3 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=28 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-426.12
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-426.12
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$190.49, Unrealized PnL=$-10.95, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,574.15  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,303.19
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=27s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=22s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=17s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=12s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=7s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.78%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       72
+Cheap options accepted:   72
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     53
+market_price_below_minimum     22
+           spread_too_wide      9
+====================================================
+Professional filter accepted=68 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=68 rejected=4
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=50 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,574.15  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $190.49
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-10.95
+Estimated equity:       $9,574.15
+Total return:           -4.26%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.079534  $97.32  $93.15 0.670014 $65.21 $62.41 $-2.79  -4.28%   open
+ETH-29MAY26-2300-P  put  2300.0 16.079534 $101.94  $91.08 0.641587 $65.40 $58.44 $-6.96 -10.65%   open
+ETH-29MAY26-2350-C call  2350.0 16.079534  $72.05  $70.84 0.983062 $70.83 $69.64 $-1.19  -1.68%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,574.15
+Total return: -4.26%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.6197
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=67
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=1 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-425.85
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-425.85
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$191.55, Unrealized PnL=$-9.89, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,575.21  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 706
+Underlying ETH index price: $2,320.35
+After DTE/moneyness prefilter: 152
+Processing instruments this run: 152
+Option-chain progress: 25/152 ( 16.4%) | failures=0 | ETA=13s
+Option-chain progress: 50/152 ( 32.9%) | failures=0 | ETA=10s
+Option-chain progress: 75/152 ( 49.3%) | failures=0 | ETA=9s
+Option-chain progress: 100/152 ( 65.8%) | failures=0 | ETA=7s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/152 ( 82.2%) | failures=0 | ETA=4s
+Option-chain progress: 150/152 ( 98.7%) | failures=0 | ETA=0s
+Option-chain progress: 152/152 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=152, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.78%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        152
+Scanned candidates:       66
+Cheap options accepted:   66
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     36
+           spread_too_wide     28
+market_price_below_minimum     22
+====================================================
+Professional filter accepted=63 rejected=3
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=152
+Surface candidate scoring complete. accepted=65 rejected=1
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=46 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,575.21  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $191.55
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-9.89
+Estimated equity:       $9,575.21
+Total return:           -4.25%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 16.068757  $97.32  $94.66 0.670014 $65.21 $63.42 $-1.78  -2.73%   open
+ETH-29MAY26-2300-P  put  2300.0 16.068757 $101.94  $89.59 0.641587 $65.40 $57.48 $-7.92 -12.11%   open
+ETH-29MAY26-2350-C call  2350.0 16.068757  $72.05  $71.86 0.983062 $70.83 $70.64 $-0.19  -0.26%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,575.21
+Total return: -4.25%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.4718
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=1 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-424.79
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-424.79
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$198.55, Unrealized PnL=$-2.89, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,582.20  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 706
+Underlying ETH index price: $2,319.76
+After DTE/moneyness prefilter: 152
+Processing instruments this run: 152
+Option-chain progress: 25/152 ( 16.4%) | failures=0 | ETA=10s
+Option-chain progress: 50/152 ( 32.9%) | failures=0 | ETA=8s
+Option-chain progress: 75/152 ( 49.3%) | failures=0 | ETA=7s
+Option-chain progress: 100/152 ( 65.8%) | failures=0 | ETA=5s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/152 ( 82.2%) | failures=0 | ETA=2s
+Option-chain progress: 150/152 ( 98.7%) | failures=0 | ETA=0s
+Option-chain progress: 152/152 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=152, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.78%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        152
+Scanned candidates:       73
+Cheap options accepted:   73
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     48
+market_price_below_minimum     22
+           spread_too_wide      9
+====================================================
+Professional filter accepted=66 rejected=7
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=152
+Surface candidate scoring complete. accepted=66 rejected=7
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=50 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,582.20  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $198.55
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-2.89
+Estimated equity:       $9,582.20
+Total return:           -4.18%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value   PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 15.946986  $97.32 $103.26 0.670014 $65.21 $69.18   $3.98   6.10%   open
+ETH-29MAY26-2300-P  put  2300.0 15.946986 $101.94  $80.75 0.641587 $65.40 $51.81 $-13.59 -20.79%   open
+ETH-29MAY26-2350-C call  2350.0 15.946986  $72.05  $78.89 0.983062 $70.83 $77.56   $6.73   9.50%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,582.20
+Total return: -4.18%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.2277
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=2 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-417.80
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-417.80
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$197.72, Unrealized PnL=$-3.72, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,581.38  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 706
+Underlying ETH index price: $2,317.04
+After DTE/moneyness prefilter: 152
+Processing instruments this run: 152
+Option-chain progress: 25/152 ( 16.4%) | failures=0 | ETA=11s
+Option-chain progress: 50/152 ( 32.9%) | failures=0 | ETA=8s
+Option-chain progress: 75/152 ( 49.3%) | failures=0 | ETA=6s
+Option-chain progress: 100/152 ( 65.8%) | failures=0 | ETA=4s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/152 ( 82.2%) | failures=0 | ETA=2s
+Option-chain progress: 150/152 ( 98.7%) | failures=0 | ETA=0s
+Option-chain progress: 152/152 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=152, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.78%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        152
+Scanned candidates:       74
+Cheap options accepted:   74
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     47
+market_price_below_minimum     21
+           spread_too_wide     10
+====================================================
+Professional filter accepted=67 rejected=7
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=152
+Surface candidate scoring complete. accepted=67 rejected=7
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=48 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,581.38  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $197.72
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-3.72
+Estimated equity:       $9,581.38
+Total return:           -4.19%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value   PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 15.921763  $97.32 $102.53 0.670014 $65.21 $68.70   $3.49   5.36%   open
+ETH-29MAY26-2300-P  put  2300.0 15.921763 $101.94  $80.96 0.641587 $65.40 $51.94 $-13.46 -20.58%   open
+ETH-29MAY26-2350-C call  2350.0 15.921763  $72.05  $78.41 0.983062 $70.83 $77.08   $6.25   8.83%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,581.38
+Total return: -4.19%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.1291
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=2 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=3 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-418.62
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-418.62
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$196.16, Unrealized PnL=$-5.27, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,579.82  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 706
+Underlying ETH index price: $2,314.47
+After DTE/moneyness prefilter: 152
+Processing instruments this run: 152
+Option-chain progress: 25/152 ( 16.4%) | failures=0 | ETA=13s
+Option-chain progress: 50/152 ( 32.9%) | failures=0 | ETA=10s
+Option-chain progress: 75/152 ( 49.3%) | failures=0 | ETA=8s
+Option-chain progress: 100/152 ( 65.8%) | failures=0 | ETA=5s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/152 ( 82.2%) | failures=0 | ETA=3s
+Option-chain progress: 150/152 ( 98.7%) | failures=0 | ETA=0s
+Option-chain progress: 152/152 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=152, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.78%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        152
+Scanned candidates:       73
+Cheap options accepted:   73
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     49
+market_price_below_minimum     21
+           spread_too_wide      9
+====================================================
+Professional filter accepted=66 rejected=7
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=152
+Surface candidate scoring complete. accepted=68 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=50 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,579.82  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $196.16
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-5.27
+Estimated equity:       $9,579.82
+Total return:           -4.20%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value   PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 15.911162  $97.32 $101.02 0.670014 $65.21 $67.69   $2.48   3.80%   open
+ETH-29MAY26-2300-P  put  2300.0 15.911162 $101.94  $82.02 0.641587 $65.40 $52.63 $-12.78 -19.54%   open
+ETH-29MAY26-2350-C call  2350.0 15.911162  $72.05  $77.16 0.983062 $70.83 $75.85   $5.02   7.09%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,579.82
+Total return: -4.20%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.0478
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=67
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=4 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-420.18
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-420.18
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$194.63, Unrealized PnL=$-6.81, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,578.29  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 706
+Underlying ETH index price: $2,283.61
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=29s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=26s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=21s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=14s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=7s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       72
+Cheap options accepted:   72
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     53
+market_price_below_minimum     21
+           spread_too_wide      8
+====================================================
+Professional filter accepted=67 rejected=5
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=66 rejected=6
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=46 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,578.29  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $194.63
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-6.81
+Estimated equity:       $9,578.29
+Total return:           -4.22%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value   PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 15.900582  $97.32  $99.75 0.670014 $65.21 $66.84   $1.63   2.50%   open
+ETH-29MAY26-2300-P  put  2300.0 15.900582 $101.94  $82.86 0.641587 $65.40 $53.16 $-12.24 -18.72%   open
+ETH-29MAY26-2350-C call  2350.0 15.900582  $72.05  $75.91 0.983062 $70.83 $74.63   $3.80   5.37%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,578.29
+Total return: -4.22%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -5.9706
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=65
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=5 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-421.71
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-421.71
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$181.79, Unrealized PnL=$-19.65, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,565.45  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 706
+Underlying ETH index price: $2,276.68
+After DTE/moneyness prefilter: 154
+Processing instruments this run: 154
+Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=27s
+Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=21s
+Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=16s
+Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=10s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=6s
+Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=1s
+Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=154, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        154
+Scanned candidates:       71
+Cheap options accepted:   71
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     52
+market_price_below_minimum     22
+           spread_too_wide      9
+====================================================
+Professional filter accepted=66 rejected=5
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=154
+Surface candidate scoring complete. accepted=68 rejected=3
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=48 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,565.45  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $181.79
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-19.65
+Estimated equity:       $9,565.45
+Total return:           -4.35%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 15.776999  $97.32  $84.27 0.670014 $65.21 $56.46 $-8.75 -13.42%   open
+ETH-29MAY26-2300-P  put  2300.0 15.776999 $101.94  $98.42 0.641587 $65.40 $63.15 $-2.25  -3.45%   open
+ETH-29MAY26-2350-C call  2350.0 15.776999  $72.05  $63.26 0.983062 $70.83 $62.18 $-8.64 -12.20%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,565.45
+Total return: -4.35%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.0666
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=2 rejected=66
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=6 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-434.55
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-434.55
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$179.51, Unrealized PnL=$-21.93, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,563.17  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,261.02
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=26s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=26s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=19s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=14s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=7s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       69
+Cheap options accepted:   69
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     49
+market_price_below_minimum     22
+           spread_too_wide     16
+====================================================
+Professional filter accepted=66 rejected=3
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=67 rejected=2
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=46 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,563.17  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $179.51
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-21.93
+Estimated equity:       $9,563.17
+Total return:           -4.37%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value   PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 15.766114  $97.32  $81.28 0.670014 $65.21 $54.46 $-10.75 -16.48%   open
+ETH-29MAY26-2300-P  put  2300.0 15.766114 $101.94 $101.77 0.641587 $65.40 $65.29  $-0.11  -0.17%   open
+ETH-29MAY26-2350-C call  2350.0 15.766114  $72.05  $60.79 0.983062 $70.83 $59.76 $-11.07 -15.63%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,563.17
+Total return: -4.37%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -6.0056
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=67
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=7 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-436.83
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-436.83
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$174.42, Unrealized PnL=$-27.01, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,558.08  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,262.29
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=13s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=11s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=8s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=6s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=3s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       66
+Cheap options accepted:   66
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     55
+market_price_below_minimum     22
+           spread_too_wide     13
+====================================================
+Professional filter accepted=65 rejected=1
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=65 rejected=1
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=43 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,558.08  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $174.42
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-27.01
+Estimated equity:       $9,558.08
+Total return:           -4.42%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value   PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 15.755328  $97.32  $74.16 0.670014 $65.21 $49.69 $-15.52 -23.80%   open
+ETH-29MAY26-2300-P  put  2300.0 15.755328 $101.94 $109.89 0.641587 $65.40 $70.50   $5.10   7.80%   open
+ETH-29MAY26-2350-C call  2350.0 15.755328  $72.05  $55.17 0.983062 $70.83 $54.23 $-16.59 -23.43%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,558.08
+Total return: -4.42%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -5.9897
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=3 rejected=62
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=8 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-441.92
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-441.92
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$174.52, Unrealized PnL=$-26.91, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,558.18  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 708
+Underlying ETH index price: $2,265.35
+After DTE/moneyness prefilter: 156
+Processing instruments this run: 156
+Option-chain progress: 25/156 ( 16.0%) | failures=0 | ETA=46s
+Option-chain progress: 50/156 ( 32.1%) | failures=0 | ETA=28s
+Option-chain progress: 75/156 ( 48.1%) | failures=0 | ETA=19s
+Option-chain progress: 100/156 ( 64.1%) | failures=0 | ETA=13s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/156 ( 80.1%) | failures=0 | ETA=7s
+Option-chain progress: 150/156 ( 96.2%) | failures=0 | ETA=1s
+Option-chain progress: 156/156 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=156, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        156
+Scanned candidates:       71
+Cheap options accepted:   71
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     52
+market_price_below_minimum     23
+           spread_too_wide     10
+====================================================
+Professional filter accepted=66 rejected=5
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=156
+Surface candidate scoring complete. accepted=66 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=46 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,558.18  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $174.52
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-26.91
+Estimated equity:       $9,558.18
+Total return:           -4.42%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value   PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 15.744479  $97.32  $74.20 0.670014 $65.21 $49.72 $-15.49 -23.75%   open
+ETH-29MAY26-2300-P  put  2300.0 15.744479 $101.94 $109.95 0.641587 $65.40 $70.54   $5.14   7.86%   open
+ETH-29MAY26-2350-C call  2350.0 15.744479  $72.05  $55.20 0.983062 $70.83 $54.26 $-16.56 -23.39%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,558.18
+Total return: -4.42%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -5.8985
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=66
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=9 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-441.82
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-441.82
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$174.96, Unrealized PnL=$-26.47, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,558.62  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1321, in do_open
+    h.request(req.get_method(), req.selector, req.data, headers,
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              encode_chunked=req.has_header('Transfer-encoding'))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1338, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1384, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1333, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1093, in _send_output
+    self.send(msg)
+    ~~~~~~~~~^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1037, in send
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1472, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1003, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/socket.py", line 846, in create_connection
+    for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+               ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/socket.py", line 983, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/scripts/run_q32_guarded_paper_loop.py", line 29, in run_q32_loop
+    run_guarded_cycle(open_when_allowed=open_allowed)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/scripts/run_guarded_overnight.py", line 23, in run_guarded_cycle
+    run_live_option_paper_backtest(LiveOptionBacktestConfig(max_option_chain_instruments=max_option_chain_instruments, ticker_timeout_seconds=5, option_chain_progress_every=25))
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/backtesting/live_option_backtest_engine.py", line 170, in run_live_option_paper_backtest
+    chain = get_or_refresh_live_option_chain(config)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/backtesting/live_option_backtest_engine.py", line 65, in get_or_refresh_live_option_chain
+    chain = build_live_eth_option_chain(DeribitConfig(timeout=config.ticker_timeout_seconds), max_instruments=config.max_option_chain_instruments, progress_every=config.option_chain_progress_every, save_partial_path=partial, min_days_to_expiry=config.min_days_to_expiry, max_days_to_expiry=max(config.max_days_to_expiry, 60.0), max_abs_moneyness=config.scanner_max_abs_moneyness)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 95, in build_live_eth_option_chain
+    instruments = fetch_deribit_instruments(config)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 30, in fetch_deribit_instruments
+    return _get_json(f'{config.base_url}/public/get_instruments?{query}', config.timeout).get('result', [])
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 23, in _get_json
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 187, in urlopen
+    return opener.open(url, data, timeout)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 487, in open
+    response = self._open(req, data)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 504, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+                              '_open', req)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1369, in https_open
+    return self.do_open(http.client.HTTPSConnection, req,
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        context=self._context)
+                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1324, in do_open
+    raise URLError(err)
+urllib.error.URLError: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=10 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-441.82
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-441.82
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=3, Closed=0, Cash=$9,383.66, Open value=$174.96, Unrealized PnL=$-26.47, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,558.62  open=3
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 710
+Underlying ETH index price: $2,244.95
+After DTE/moneyness prefilter: 158
+Processing instruments this run: 158
+Option-chain progress: 25/158 ( 15.8%) | failures=0 | ETA=11s
+Option-chain progress: 50/158 ( 31.6%) | failures=0 | ETA=9s
+Option-chain progress: 75/158 ( 47.5%) | failures=0 | ETA=7s
+Option-chain progress: 100/158 ( 63.3%) | failures=0 | ETA=5s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/158 ( 79.1%) | failures=0 | ETA=3s
+Option-chain progress: 150/158 ( 94.9%) | failures=0 | ETA=1s
+Option-chain progress: 158/158 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=158, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        158
+Scanned candidates:       65
+Cheap options accepted:   65
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     52
+market_price_below_minimum     24
+           spread_too_wide     17
+====================================================
+Professional filter accepted=61 rejected=4
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=158
+Surface candidate scoring complete. accepted=63 rejected=2
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=47 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,558.62  open=3
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,383.66
+Open position value:    $174.96
+Open risk/cost basis:   $201.44
+Unrealized PnL:         $-26.47
+Estimated equity:       $9,558.62
+Total return:           -4.41%
+Open positions:         3
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value   PnL $   PnL % Status
+ETH-29MAY26-2300-C call  2300.0 15.733826  $97.32  $75.66 0.670014 $65.21 $50.70 $-14.51 -22.25%   open
+ETH-29MAY26-2300-P  put  2300.0 15.733826 $101.94 $107.60 0.641587 $65.40 $69.04   $3.64   5.56%   open
+ETH-29MAY26-2350-C call  2350.0 15.733826  $72.05  $56.18 0.983062 $70.83 $55.23 $-15.60 -22.02%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,558.62
+Total return: -4.41%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -5.8063
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=62
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=11 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-441.38
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-441.38
+Q32 call throttle: block_new_calls=False reasons=
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=1, Closed=2, Cash=$9,476.29, Open value=$76.19, Unrealized PnL=$10.79, Realized this cycle=$-43.40
+Reconciliation: ok  equity=9,552.49  open=1
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 712
+Underlying ETH index price: $2,243.55
+After DTE/moneyness prefilter: 160
+Processing instruments this run: 160
+Option-chain progress: 25/160 ( 15.6%) | failures=0 | ETA=11s
+Option-chain progress: 50/160 ( 31.2%) | failures=0 | ETA=9s
+Option-chain progress: 75/160 ( 46.9%) | failures=0 | ETA=7s
+Option-chain progress: 100/160 ( 62.5%) | failures=0 | ETA=5s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/160 ( 78.1%) | failures=0 | ETA=3s
+Option-chain progress: 150/160 ( 93.8%) | failures=0 | ETA=1s
+Option-chain progress: 160/160 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=160, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        160
+Scanned candidates:       63
+Cheap options accepted:   63
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     49
+market_price_below_minimum     25
+           spread_too_wide     23
+====================================================
+Professional filter accepted=61 rejected=2
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=160
+Surface candidate scoring complete. accepted=63 rejected=0
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=46 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,552.49  open=1
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,476.29
+Open position value:    $76.19
+Open risk/cost basis:   $65.40
+Unrealized PnL:         $10.79
+Estimated equity:       $9,552.49
+Total return:           -4.48%
+Open positions:         1
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-P  put  2300.0 15.671754 $101.94 $118.76 0.641587 $65.40 $76.19 $10.79 16.50%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,552.49
+Total return: -4.48%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -5.8119
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=1 rejected=62
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=12 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-447.51
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-447.51
+Q32 call throttle: block_new_calls=True reasons=call_loss_rate_high:0.62;call_expectancy_negative:-0.08
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=1, Closed=0, Cash=$9,476.29, Open value=$76.58, Unrealized PnL=$11.18, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,552.87  open=1
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 712
+Underlying ETH index price: $2,252.01
+After DTE/moneyness prefilter: 160
+Processing instruments this run: 160
+Option-chain progress: 25/160 ( 15.6%) | failures=0 | ETA=13s
+Option-chain progress: 50/160 ( 31.2%) | failures=0 | ETA=10s
+Option-chain progress: 75/160 ( 46.9%) | failures=0 | ETA=8s
+Option-chain progress: 100/160 ( 62.5%) | failures=0 | ETA=6s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/160 ( 78.1%) | failures=0 | ETA=3s
+Option-chain progress: 150/160 ( 93.8%) | failures=0 | ETA=1s
+Option-chain progress: 160/160 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=160, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        160
+Scanned candidates:       69
+Cheap options accepted:   69
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     57
+market_price_below_minimum     25
+           spread_too_wide      9
+====================================================
+Professional filter accepted=63 rejected=6
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=160
+Surface candidate scoring complete. accepted=64 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=47 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,552.87  open=1
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,476.29
+Open position value:    $76.58
+Open risk/cost basis:   $65.40
+Unrealized PnL:         $11.18
+Estimated equity:       $9,552.87
+Total return:           -4.47%
+Open positions:         1
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value  PnL $  PnL % Status
+ETH-29MAY26-2300-P  put  2300.0 15.652024 $101.94 $119.36 0.641587 $65.40 $76.58 $11.18 17.09%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,552.87
+Total return: -4.47%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -5.7264
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=64
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=13 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-447.13
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-447.13
+Q32 call throttle: block_new_calls=True reasons=call_loss_rate_high:0.62;call_expectancy_negative:-0.08
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=1, Closed=0, Cash=$9,476.29, Open value=$73.83, Unrealized PnL=$8.43, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,550.13  open=1
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 712
+Underlying ETH index price: $2,253.96
+After DTE/moneyness prefilter: 160
+Processing instruments this run: 160
+Option-chain progress: 25/160 ( 15.6%) | failures=0 | ETA=12s
+Option-chain progress: 50/160 ( 31.2%) | failures=0 | ETA=10s
+Option-chain progress: 75/160 ( 46.9%) | failures=0 | ETA=8s
+Option-chain progress: 100/160 ( 62.5%) | failures=2 | ETA=905s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/160 ( 78.1%) | failures=2 | ETA=424s
+Option-chain progress: 150/160 ( 93.8%) | failures=2 | ETA=101s
+Option-chain progress: 160/160 (100.0%) | failures=2 | ETA=0s
+Finished option-chain refresh. Rows=160, failures=2
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        160
+Scanned candidates:       68
+Cheap options accepted:   68
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                         reason  count
+         classification_neutral     54
+     market_price_below_minimum     25
+                spread_too_wide     11
+missing_or_invalid_market_price      2
+====================================================
+Professional filter accepted=62 rejected=6
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=160
+Surface candidate scoring complete. accepted=63 rejected=5
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=47 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,550.13  open=1
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,476.29
+Open position value:    $73.83
+Open risk/cost basis:   $65.40
+Unrealized PnL:         $8.43
+Estimated equity:       $9,550.13
+Total return:           -4.50%
+Open positions:         1
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value PnL $  PnL % Status
+ETH-29MAY26-2300-P  put  2300.0 15.632497 $101.94 $115.08 0.641587 $65.40 $73.83 $8.43 12.89%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,550.13
+Total return: -4.50%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -5.6883
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=63
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=14 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-449.87
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-449.87
+Q32 call throttle: block_new_calls=True reasons=call_loss_rate_high:0.62;call_expectancy_negative:-0.08
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=1, Closed=0, Cash=$9,476.29, Open value=$72.88, Unrealized PnL=$7.48, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,549.18  open=1
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1321, in do_open
+    h.request(req.get_method(), req.selector, req.data, headers,
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              encode_chunked=req.has_header('Transfer-encoding'))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1338, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1384, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1333, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1093, in _send_output
+    self.send(msg)
+    ~~~~~~~~~^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1037, in send
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1472, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1003, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/socket.py", line 846, in create_connection
+    for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+               ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/socket.py", line 983, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 8] nodename nor servname provided, or not known
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/scripts/run_q32_guarded_paper_loop.py", line 29, in run_q32_loop
+    run_guarded_cycle(open_when_allowed=open_allowed)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/scripts/run_guarded_overnight.py", line 23, in run_guarded_cycle
+    run_live_option_paper_backtest(LiveOptionBacktestConfig(max_option_chain_instruments=max_option_chain_instruments, ticker_timeout_seconds=5, option_chain_progress_every=25))
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/backtesting/live_option_backtest_engine.py", line 170, in run_live_option_paper_backtest
+    chain = get_or_refresh_live_option_chain(config)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/backtesting/live_option_backtest_engine.py", line 65, in get_or_refresh_live_option_chain
+    chain = build_live_eth_option_chain(DeribitConfig(timeout=config.ticker_timeout_seconds), max_instruments=config.max_option_chain_instruments, progress_every=config.option_chain_progress_every, save_partial_path=partial, min_days_to_expiry=config.min_days_to_expiry, max_days_to_expiry=max(config.max_days_to_expiry, 60.0), max_abs_moneyness=config.scanner_max_abs_moneyness)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 95, in build_live_eth_option_chain
+    instruments = fetch_deribit_instruments(config)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 30, in fetch_deribit_instruments
+    return _get_json(f'{config.base_url}/public/get_instruments?{query}', config.timeout).get('result', [])
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 23, in _get_json
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 187, in urlopen
+    return opener.open(url, data, timeout)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 487, in open
+    response = self._open(req, data)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 504, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+                              '_open', req)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1369, in https_open
+    return self.do_open(http.client.HTTPSConnection, req,
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        context=self._context)
+                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1324, in do_open
+    raise URLError(err)
+urllib.error.URLError: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+Q32 loop sleeping 900s...
+zsh: command not found: caffei-dimsu
+
+========== Q32 GUARDED PAPER LOOP cycle=1 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-449.87
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-449.87
+Q32 call throttle: block_new_calls=True reasons=call_loss_rate_high:0.62;call_expectancy_negative:-0.08
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=1, Closed=0, Cash=$9,476.29, Open value=$72.88, Unrealized PnL=$7.48, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,549.18  open=1
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1321, in do_open
+    h.request(req.get_method(), req.selector, req.data, headers,
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              encode_chunked=req.has_header('Transfer-encoding'))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1338, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1384, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1333, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1093, in _send_output
+    self.send(msg)
+    ~~~~~~~~~^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1037, in send
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/client.py", line 1479, in connect
+    self.sock = self._context.wrap_socket(self.sock,
+                ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+                                          server_hostname=server_hostname)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/ssl.py", line 455, in wrap_socket
+    return self.sslsocket_class._create(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sock=sock,
+        ^^^^^^^^^^
+    ...<5 lines>...
+        session=session
+        ^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/ssl.py", line 1076, in _create
+    self.do_handshake()
+    ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/ssl.py", line 1372, in do_handshake
+    self._sslobj.do_handshake()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1077)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/scripts/run_q32_guarded_paper_loop.py", line 29, in run_q32_loop
+    run_guarded_cycle(open_when_allowed=open_allowed)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/scripts/run_guarded_overnight.py", line 23, in run_guarded_cycle
+    run_live_option_paper_backtest(LiveOptionBacktestConfig(max_option_chain_instruments=max_option_chain_instruments, ticker_timeout_seconds=5, option_chain_progress_every=25))
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/backtesting/live_option_backtest_engine.py", line 170, in run_live_option_paper_backtest
+    chain = get_or_refresh_live_option_chain(config)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/backtesting/live_option_backtest_engine.py", line 65, in get_or_refresh_live_option_chain
+    chain = build_live_eth_option_chain(DeribitConfig(timeout=config.ticker_timeout_seconds), max_instruments=config.max_option_chain_instruments, progress_every=config.option_chain_progress_every, save_partial_path=partial, min_days_to_expiry=config.min_days_to_expiry, max_days_to_expiry=max(config.max_days_to_expiry, 60.0), max_abs_moneyness=config.scanner_max_abs_moneyness)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 95, in build_live_eth_option_chain
+    instruments = fetch_deribit_instruments(config)
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 30, in fetch_deribit_instruments
+    return _get_json(f'{config.base_url}/public/get_instruments?{query}', config.timeout).get('result', [])
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jakubjalowiecki/Desktop/programowanie sem 2/eth-options-paper-trader-main/eth-options-paper-trader/data/options_data.py", line 23, in _get_json
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 187, in urlopen
+    return opener.open(url, data, timeout)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 487, in open
+    response = self._open(req, data)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 504, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+                              '_open', req)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1369, in https_open
+    return self.do_open(http.client.HTTPSConnection, req,
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        context=self._context)
+                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/urllib/request.py", line 1324, in do_open
+    raise URLError(err)
+urllib.error.URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1077)>
+Q32 loop sleeping 900s...
+
+========== Q32 GUARDED PAPER LOOP cycle=1 ==========
+Kill switch active=True reason=q32_loss_control:total_drawdown_abs_exceeded:-449.87
+Q32 loss control: HALT_NEW_ENTRIES total_drawdown_abs_exceeded:-449.87
+Q32 call throttle: block_new_calls=True reasons=call_loss_rate_high:0.62;call_expectancy_negative:-0.08
+
+========== GUARDED PAPER CYCLE =========
+Position management done. Open=1, Closed=0, Cash=$9,476.29, Open value=$72.88, Unrealized PnL=$7.48, Realized this cycle=$0.00
+Reconciliation: ok  equity=9,549.18  open=1
+Refreshing live Deribit ETH option chain...
+Fetching Deribit ETH option instrument list...
+Deribit instruments available: 712
+Underlying ETH index price: $2,267.11
+After DTE/moneyness prefilter: 160
+Processing instruments this run: 160
+Option-chain progress: 25/160 ( 15.6%) | failures=0 | ETA=11s
+Option-chain progress: 50/160 ( 31.2%) | failures=0 | ETA=9s
+Option-chain progress: 75/160 ( 46.9%) | failures=0 | ETA=7s
+Option-chain progress: 100/160 ( 62.5%) | failures=0 | ETA=5s
+Partial option chain saved: outputs/live_eth_option_chain.partial.csv
+Option-chain progress: 125/160 ( 78.1%) | failures=0 | ETA=3s
+Option-chain progress: 150/160 ( 93.8%) | failures=0 | ETA=1s
+Option-chain progress: 160/160 (100.0%) | failures=0 | ETA=0s
+Finished option-chain refresh. Rows=160, failures=0
+Saved live option chain to: outputs/live_eth_option_chain.csv
+Downloading ETH historical data for volatility estimate...
+Estimated ETH historical volatility used: 64.77%
+Saved candidates to:      outputs/live_backtest_candidates.csv
+Saved raw rejections to:  outputs/live_backtest_candidates_raw_rejected.csv
+
+========== LIVE OPTION PAPER-BACKTEST SUMMARY =========
+Option-chain rows:        160
+Scanned candidates:       67
+Cheap options accepted:   67
+=======================================================
+
+========== RAW CANDIDATE REJECTION SUMMARY =========
+                    reason  count
+    classification_neutral     56
+market_price_below_minimum     27
+           spread_too_wide     10
+====================================================
+Professional filter accepted=62 rejected=5
+Saved IV surface diagnostics to: outputs/iv_surface_diagnostics.csv rows=160
+Surface candidate scoring complete. accepted=67 rejected=0
+Portfolio risk-limit check complete. status=OK breaches=0
+Portfolio optimizer complete. selected=2 rejected=50 status=ok
+Scheduler risk guard: allow_new_entries=True reasons=none
+Guard blocked new entries; management/reporting only.
+Reconciliation: ok  equity=9,549.18  open=1
+
+========== CLEAN PAPER ACCOUNT SUMMARY ==========
+Free cash:              $9,476.29
+Open position value:    $72.88
+Open risk/cost basis:   $65.40
+Unrealized PnL:         $7.48
+Estimated equity:       $9,549.18
+Total return:           -4.51%
+Open positions:         1
+=================================================
+
+========== CLEAN OPEN POSITIONS =========
+        Instrument Type  Strike       DTE   Entry Current      Qty   Risk  Value PnL $  PnL % Status
+ETH-29MAY26-2300-P  put  2300.0 15.621886 $101.94 $113.60 0.641587 $65.40 $72.88 $7.48 11.44%   open
+=========================================
+
+========== PAPER PERFORMANCE =========
+Estimated equity: $9,549.18
+Total return: -4.51%
+Available candidates passed: 2
+======================================
+
+========== PAPER RISK METRICS =========
+Sharpe ratio: -5.6273
+Profit factor: 0.0000
+=======================================
+Q32 candidate filter accepted=0 rejected=67
+Q32 profit lock actions=0
+Q32 loop sleeping 900s...

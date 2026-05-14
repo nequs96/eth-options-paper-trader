@@ -1,0 +1,30 @@
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Any
+import json, urllib.request, urllib.parse, math, pandas as pd
+@dataclass
+class DeribitConfig:
+    base_url: str='https://www.deribit.com/api/v2'; currency: str='ETH'; kind: str='option'; expired: bool=False; timeout: int=20
+def _get_json(url,timeout=20):
+    with urllib.request.urlopen(url,timeout=timeout) as r: return json.loads(r.read().decode())
+def fetch_deribit_instruments(config=None):
+    config=config or DeribitConfig(); qs=urllib.parse.urlencode({'currency':config.currency,'kind':config.kind,'expired':str(config.expired).lower()}); return _get_json(f'{config.base_url}/public/get_instruments?{qs}',config.timeout).get('result',[])
+def fetch_deribit_ticker(instrument_name, config=None):
+    config=config or DeribitConfig(); qs=urllib.parse.urlencode({'instrument_name':instrument_name}); return _get_json(f'{config.base_url}/public/ticker?{qs}',config.timeout)
+def fetch_eth_underlying_price(config=None):
+    config=config or DeribitConfig(); return float(_get_json(f'{config.base_url}/public/get_index_price?index_name=eth_usd',config.timeout).get('result',{}).get('index_price',0))
+def _usd(x,underlying):
+    try: v=float(x)
+    except Exception: return None
+    return None if not math.isfinite(v) or v<=0 else (v*underlying if v<10 else v)
+def build_live_eth_option_chain(config=None, max_instruments=None):
+    config=config or DeribitConfig(); instruments=fetch_deribit_instruments(config); underlying=fetch_eth_underlying_price(config); now=pd.Timestamp.utcnow(); rows=[]
+    for inst in (instruments[:max_instruments] if max_instruments else instruments):
+        name=inst.get('instrument_name');
+        if not name: continue
+        try: ticker=fetch_deribit_ticker(name,config).get('result',{})
+        except Exception: ticker={}
+        exp=pd.to_datetime(inst.get('expiration_timestamp'),unit='ms',utc=True) if inst.get('expiration_timestamp') else pd.NaT; dte=max((exp-now).total_seconds()/86400,0) if pd.notna(exp) else None
+        bid=_usd(ticker.get('best_bid_price'),underlying); ask=_usd(ticker.get('best_ask_price'),underlying); mark=_usd(ticker.get('mark_price'),underlying); last=_usd(ticker.get('last_price'),underlying); market=mark or last or ((bid+ask)/2 if bid and ask else None); spread=(ask-bid)/((ask+bid)/2) if bid and ask and (ask+bid)>0 else None; greeks=ticker.get('greeks') or {}
+        rows.append({'instrument_name':name,'option_type':'call' if name.split('-')[-1].upper()=='C' else 'put','expiry':exp.strftime('%Y-%m-%d') if pd.notna(exp) else '','strike':float(inst.get('strike') or 0),'days_to_expiry':dte,'underlying_price_usd':underlying,'spot_price':underlying,'mark_price_usd':mark,'bid_price_usd':bid,'ask_price_usd':ask,'last_price_usd':last,'market_price_usd':market,'mark_iv':ticker.get('mark_iv'),'implied_volatility':float(ticker.get('mark_iv'))/100 if ticker.get('mark_iv') is not None else None,'delta':greeks.get('delta'),'gamma':greeks.get('gamma'),'vega':greeks.get('vega'),'theta':greeks.get('theta'),'open_interest':ticker.get('open_interest'),'volume':ticker.get('stats',{}).get('volume'),'bid_ask_spread_pct':spread})
+    return pd.DataFrame(rows)

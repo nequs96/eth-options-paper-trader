@@ -1,0 +1,2 @@
+instrument_name,option_type,strike,days_to_expiry,entry_price_usd,current_price_usd,quantity,capital_at_risk,current_value_usd,unrealized_pnl_usd,unrealized_pnl_pct,status
+ETH-29MAY26-2300-P,put,2300.0,15.621886091585647,101.937009,113.599584,0.6415870108766174,65.40146090201284,72.8840175353872,7.48255663337436,0.11440962526181231,open

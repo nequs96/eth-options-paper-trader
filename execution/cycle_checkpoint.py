@@ -1,0 +1,32 @@
+from __future__ import annotations
+import json
+from pathlib import Path
+import pandas as pd
+from execution.robust_io import atomic_write_json
+
+DEFAULT_FILE = 'outputs/cycle_state.json'
+
+
+def write_checkpoint(stage: str, status: str = 'running', details: dict | None = None, file: str = DEFAULT_FILE) -> dict:
+    payload = {
+        'timestamp': pd.Timestamp.utcnow().isoformat(),
+        'stage': stage,
+        'status': status,
+        'details': details or {},
+    }
+    atomic_write_json(file, payload)
+    return payload
+
+
+def read_checkpoint(file: str = DEFAULT_FILE) -> dict:
+    p = Path(file)
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding='utf-8'))
+    except Exception:
+        return {}
+
+
+if __name__ == '__main__':
+    print(write_checkpoint('manual', 'ok'))

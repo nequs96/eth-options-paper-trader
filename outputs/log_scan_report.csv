@@ -1,0 +1,194 @@
+line_number,text
+11,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=24s
+12,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=19s
+13,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=14s
+14,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+16,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=4s
+17,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+18,"Finished option-chain refresh. Rows=148, failures=0"
+98,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=27s
+99,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=21s
+100,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=16s
+101,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=11s
+103,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=5s
+104,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+105,"Finished option-chain refresh. Rows=148, failures=0"
+185,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=24s
+186,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=19s
+187,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=14s
+188,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+190,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=5s
+191,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+192,"Finished option-chain refresh. Rows=148, failures=0"
+272,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=26s
+273,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=21s
+274,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=16s
+275,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=10s
+277,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=5s
+278,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+279,"Finished option-chain refresh. Rows=148, failures=0"
+359,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=24s
+360,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=19s
+361,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=14s
+362,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+364,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=4s
+365,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+366,"Finished option-chain refresh. Rows=148, failures=0"
+446,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=24s
+447,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=19s
+448,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=14s
+449,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+451,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=4s
+452,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+453,"Finished option-chain refresh. Rows=148, failures=0"
+533,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=28s
+534,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=22s
+535,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=16s
+536,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=11s
+538,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=5s
+539,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+540,"Finished option-chain refresh. Rows=148, failures=0"
+620,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=24s
+621,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=19s
+622,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=14s
+623,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+625,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=4s
+626,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+627,"Finished option-chain refresh. Rows=148, failures=0"
+707,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=24s
+708,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=20s
+709,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=15s
+710,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=10s
+712,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=5s
+713,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+714,"Finished option-chain refresh. Rows=148, failures=0"
+794,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=24s
+795,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=19s
+796,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=14s
+797,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+799,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=4s
+800,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+801,"Finished option-chain refresh. Rows=148, failures=0"
+881,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=23s
+882,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=19s
+883,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=14s
+884,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+886,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=4s
+887,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+888,"Finished option-chain refresh. Rows=148, failures=0"
+968,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=24s
+969,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=19s
+970,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=14s
+971,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+973,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=4s
+974,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+975,"Finished option-chain refresh. Rows=148, failures=0"
+1055,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=24s
+1056,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=19s
+1057,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=14s
+1058,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+1060,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=4s
+1061,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+1062,"Finished option-chain refresh. Rows=148, failures=0"
+1142,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=25s
+1143,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=20s
+1144,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=15s
+1145,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=10s
+1147,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=5s
+1148,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+1149,"Finished option-chain refresh. Rows=148, failures=0"
+1229,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=24s
+1230,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=19s
+1231,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=14s
+1232,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+1234,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=4s
+1235,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+1236,"Finished option-chain refresh. Rows=148, failures=0"
+1312,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=34s
+1313,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=26s
+1314,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=19s
+1315,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=12s
+1317,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=6s
+1318,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+1319,"Finished option-chain refresh. Rows=148, failures=0"
+1395,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=32s
+1396,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=24s
+1397,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=19s
+1398,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=13s
+1400,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=6s
+1401,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+1402,"Finished option-chain refresh. Rows=148, failures=0"
+1478,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=27s
+1479,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=20s
+1480,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=15s
+1481,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=10s
+1483,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=5s
+1484,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+1485,"Finished option-chain refresh. Rows=148, failures=0"
+1561,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=25s
+1562,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=20s
+1563,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=15s
+1564,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+1566,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=5s
+1567,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+1568,"Finished option-chain refresh. Rows=148, failures=0"
+1643,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=23s
+1644,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=18s
+1645,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=14s
+1646,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=9s
+1648,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=4s
+1649,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+1650,"Finished option-chain refresh. Rows=148, failures=0"
+1725,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=10s
+1726,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=8s
+1727,Option-chain progress: 75/148 ( 50.7%) | failures=1 | ETA=520s
+1728,Option-chain progress: 100/148 ( 67.6%) | failures=1 | ETA=257s
+1730,Option-chain progress: 125/148 ( 84.5%) | failures=1 | ETA=99s
+1731,Option-chain progress: 148/148 (100.0%) | failures=1 | ETA=0s
+1732,"Finished option-chain refresh. Rows=148, failures=1"
+1808,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=11s
+1809,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=9s
+1810,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=7s
+1811,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=4s
+1813,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=2s
+1814,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+1815,"Finished option-chain refresh. Rows=148, failures=0"
+1890,Option-chain progress: 25/148 ( 16.9%) | failures=0 | ETA=10s
+1891,Option-chain progress: 50/148 ( 33.8%) | failures=0 | ETA=8s
+1892,Option-chain progress: 75/148 ( 50.7%) | failures=0 | ETA=6s
+1893,Option-chain progress: 100/148 ( 67.6%) | failures=0 | ETA=4s
+1895,Option-chain progress: 125/148 ( 84.5%) | failures=0 | ETA=2s
+1896,Option-chain progress: 148/148 (100.0%) | failures=0 | ETA=0s
+1897,"Finished option-chain refresh. Rows=148, failures=0"
+1972,Option-chain progress: 25/152 ( 16.4%) | failures=0 | ETA=10s
+1973,Option-chain progress: 50/152 ( 32.9%) | failures=0 | ETA=8s
+1974,Option-chain progress: 75/152 ( 49.3%) | failures=0 | ETA=6s
+1975,Option-chain progress: 100/152 ( 65.8%) | failures=0 | ETA=4s
+1977,Option-chain progress: 125/152 ( 82.2%) | failures=0 | ETA=3s
+1978,Option-chain progress: 150/152 ( 98.7%) | failures=0 | ETA=0s
+1979,Option-chain progress: 152/152 (100.0%) | failures=0 | ETA=0s
+1980,"Finished option-chain refresh. Rows=152, failures=0"
+2054,Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=12s
+2055,Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=9s
+2056,Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=7s
+2057,Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=5s
+2059,Option-chain progress: 125/154 ( 81.2%) | failures=1 | ETA=93s
+2060,Option-chain progress: 150/154 ( 97.4%) | failures=2 | ETA=13s
+2061,Option-chain progress: 154/154 (100.0%) | failures=2 | ETA=0s
+2062,"Finished option-chain refresh. Rows=154, failures=2"
+2131,Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=10s
+2132,Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=8s
+2133,Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=6s
+2134,Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=4s
+2136,Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=3s
+2137,Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=0s
+2138,Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+2139,"Finished option-chain refresh. Rows=154, failures=0"
+2207,Option-chain progress: 25/154 ( 16.2%) | failures=0 | ETA=12s
+2208,Option-chain progress: 50/154 ( 32.5%) | failures=0 | ETA=13s
+2209,Option-chain progress: 75/154 ( 48.7%) | failures=0 | ETA=9s
+2210,Option-chain progress: 100/154 ( 64.9%) | failures=0 | ETA=6s
+2212,Option-chain progress: 125/154 ( 81.2%) | failures=0 | ETA=3s
+2213,Option-chain progress: 150/154 ( 97.4%) | failures=0 | ETA=0s
+2214,Option-chain progress: 154/154 (100.0%) | failures=0 | ETA=0s
+2215,"Finished option-chain refresh. Rows=154, failures=0"

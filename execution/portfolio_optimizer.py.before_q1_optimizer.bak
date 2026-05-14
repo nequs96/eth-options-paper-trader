@@ -1,0 +1,31 @@
+from __future__ import annotations
+from pathlib import Path
+import pandas as pd
+
+
+def fractional_kelly(edge, win_prob: float = 0.55, payoff_ratio: float = 1.5, fraction: float = 0.25) -> float:
+    b = max(payoff_ratio, 1e-9)
+    kelly = (b * win_prob - (1 - win_prob)) / b
+    return max(kelly, 0.0) * fraction * max(float(edge), 0.0)
+
+
+def optimize_trade_list(candidates_file: str = 'outputs/live_backtest_candidates_surface_scored.csv', max_positions: int = 2) -> pd.DataFrame:
+    path = Path(candidates_file)
+    candidates = pd.read_csv(path) if path.exists() and path.stat().st_size > 0 else pd.DataFrame()
+    if candidates.empty:
+        output = pd.DataFrame()
+    else:
+        score = 'institutional_edge_score' if 'institutional_edge_score' in candidates.columns else 'combined_score'
+        candidates[score] = pd.to_numeric(candidates[score], errors='coerce').fillna(0)
+        output = candidates.sort_values(score, ascending=False).head(max_positions).copy()
+        output['optimizer_reason'] = 'top_score_under_basic_constraints'
+        output['fractional_kelly_size_hint'] = output[score].apply(fractional_kelly)
+    Path('outputs').mkdir(exist_ok=True)
+    output.to_csv('outputs/optimized_trade_list.csv', index=False)
+    pd.DataFrame([{'max_positions': max_positions, 'selected': len(output)}]).to_csv('outputs/optimization_constraints_report.csv', index=False)
+    print(f'Portfolio optimizer complete. selected={len(output)}')
+    return output
+
+
+if __name__ == '__main__':
+    optimize_trade_list()
